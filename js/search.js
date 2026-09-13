@@ -28,6 +28,6 @@ export function initSearchHighlighter() {
       }
     }
 
-    walk(document.body);
+    walk(document.querySelector('article'));
   });
 }
