@@ -66,6 +66,14 @@ Fix the semantic and functional issues according to the app requirements. Use ap
 
 **Theory question:** Describe event propagation (capturing, target, and bubbling). Where could event delegation be useful in this application, and what trade-off would it introduce?
 
+> **Answer:**
+>
+> An event goes through three phases: first **capturing**, where it travels down from `window` through all ancestors to the element that was actually clicked (only listeners registered with `{ capture: true }` run here). Then the **target** phase, where it reaches that element itself. Then **bubbling**, where it travels back up through the same ancestors to `window` — this is the default phase and what most listeners use.
+>
+> Delegation could make sense for `.comment-container` and `.more_bears`, since both get new elements added after the page already loaded (new comments on submit, new bear cards once the Wikipedia data arrives). For per-item actions like a "delete comment" button, a listener bound directly to the button wouldn't exist yet for comments added later. Instead, one listener on the parent plus `event.target.closest(...)` in the bubbling phase would find out which child was clicked.
+>
+> Trade-off: one shared listener always needs extra `closest()`/`matches()` logic to figure out what was actually clicked and to filter out clicks that shouldn't count, which is more error-prone than just binding a handler directly to one element.
+
 #### Task 3: Make failures explicit
 
 Add error handling with `try`/`catch` and show useful, user-facing error messages. Check whether each image can be loaded and render a placeholder when it cannot. Do not represent a failed request as valid empty data.
