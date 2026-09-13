@@ -51,6 +51,15 @@ Split the code into separate script files and use ES modules (`import`/`export`)
 
 **Theory question:** How does an ES module differ from a classic script with respect to scope, strict mode, loading, and bindings? Explain why the module boundaries you chose make the application easier to maintain.
 
+> **Answer:**
+>
+> * **Scope:** A classic script runs in the global scope — top-level `var`/`function` declarations become properties of `window` and are visible to (and can clash with) every other script on the page. An ES module has its own module scope: top-level declarations stay local to the file and are only exposed to other files if explicitly exported.
+> * **Strict mode:** Modules are always executed in strict mode automatically. Classic scripts are sloppy-mode by default, which allowed things like the original code's undeclared/mistyped variables to fail more silently.
+> * **Loading:** A classic `<script>` is fetched and executed synchronously, in document order, blocking HTML parsing unless `async`/`defer` is set. A `<script type="module">` is always deferred (parsed after the document), fetched asynchronously, and — crucially — its `import`/`export` graph is resolved by the browser first, so a module is only ever executed once no matter how many other modules import it. Module loading also enforces CORS, which is why the page now needs to be served over HTTP instead of opened via `file://`.
+> * **Bindings:** exported values are *live bindings*, not copies. If a module updates an exported variable, every module that imported it sees the new value immediately. Classic scripts have no such mechanism.
+>
+> **Module boundaries:** each file now owns exactly one feature and exposes only the functions it wants other code to call (`initSearchHighlighter`, `initCommentToggle`/`initCommentForm`, `loadBears`). Everything else — helper functions, DOM references, request parameters stays private to that module instead of leaking into the global scope
+
 #### Task 2: Correct the application behavior
 
 Fix the semantic and functional issues according to the app requirements. Use appropriate DOM queries and event handling, and ensure the bear list has the same order and number of entries as the source page.
