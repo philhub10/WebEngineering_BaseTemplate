@@ -7,7 +7,7 @@ export function initCommentToggle() {
 
   showHideBtn.onclick = function() {
     var showHideText = showHideBtn.textContent;
-    if (showHideText === 'Show comment') {
+    if (showHideText === 'Show comments') {
       showHideBtn.textContent = 'Hide comments';
       commentWrapper.style.display = 'block';
     } else {
@@ -30,10 +30,10 @@ export function initCommentForm() {
     var listItem = document.createElement('li');
     var namePara = document.createElement('p');
     var commentPara = document.createElement('p');
-    var nameValue = nameField.valeu;
+    var nameValue = nameField.value;
     var commentValue = commentField.value;
 
-    namePara.textContnet = nameValue;
+    namePara.textContent = nameValue;
     commentPara.textContent = commentValue;
 
     console.log(nameValue);
