@@ -3,7 +3,7 @@ export function initSearchHighlighter() {
   document.querySelector('.search').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    document.querySelectorAll('.highlight').forEach(function(el) {
+    document.querySelectorAll('.highlight').forEach((el) => {
       var parent = el.parentNode;
       parent.replaceChild(document.createTextNode(el.textContent), el);
       parent.normalize();
@@ -14,7 +14,7 @@ export function initSearchHighlighter() {
 
     var regex = new RegExp('(' + searchKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
 
-    function walk(node) {
+    const walk = (node) => {
       if (node.nodeType === 3) { // Text node
         var match = node.nodeValue.match(regex);
         if (match) {
@@ -26,7 +26,7 @@ export function initSearchHighlighter() {
       else if (node.nodeType === 1 && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && node.tagName !== 'FORM') {
         node.childNodes.forEach(walk);
       }
-    }
+    };
 
     walk(document.querySelector('article'));
   });

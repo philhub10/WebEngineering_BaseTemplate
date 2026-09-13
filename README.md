@@ -94,6 +94,16 @@ Replace promise callback chains with `async`/`await` and refactor suitable callb
 
 **Theory question:** Explain the relationship between `async`/`await`, promises, the microtask queue, and the browser event loop. Also explain why an arrow function is not always an interchangeable replacement for a regular function, particularly regarding `this`.
 
+> **Answer:**
+>
+> JavaScript can only run one piece of code at a time (it's single-threaded) — everything currently running sits on the **call stack**, and nothing else happens until the stack is empty again. If a slow operation ran directly on that stack, the whole page (clicks, scrolling, rendering) would freeze until it finished.
+>
+> `fetch()` avoids that: calling it does not do the actual networking on the JS thread. It immediately returns a pending **promise** and hands the real request off to the browser itself, so the call stack empties right away and the page stays interactive while the request travels over the network. `async`/`await` is just syntax on top of this: an `async` function always returns a promise, and `await` pauses *that function* until the promise it's waiting on settles — it does not pause the browser or block other code from running in the meantime.
+>
+> Once the response comes back, the code after `await` (or a promise's `.then()`) doesn't run instantly — it gets placed in a waiting line first. The **event loop** is the browser's loop that keeps checking "is the call stack empty?" and, if so, decides what runs next. There are two such waiting lines: the **macrotask queue** (things like timers, click/input events, rendering) and the **microtask queue** (promise callbacks — i.e. `.then()` and everything after an `await`). The rule the event loop follows is: once the call stack is empty, run through the *entire* microtask queue first — one by one, even if a microtask adds another microtask while running — and only once that queue is completely empty does it move on to a single item from the macrotask queue.
+>
+> Arrow functions do not get their own `this` — they use whatever `this` was in scope where they were defined. Regular `function`s get a `this` set by how they are *called*. This matters directly in `search.js`: the submit handler reads `this.q.value`, which only works because the browser calls it with `this` bound to the `<form>` element it's attached to. Turning that handler into an arrow function would make `this` resolve to the surrounding module scope instead of the form, and `this.q` would be `undefined`.
+
 #### Task 5: Remove remaining code smells
 
 Find and eliminate the remaining bad coding practices. Consider scope, accidental globals, mutation and shared references, function responsibilities, naming, duplication, and DOM update patterns. Document each relevant finding, why it is problematic, and how you fixed it below.
