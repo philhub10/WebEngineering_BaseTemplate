@@ -80,6 +80,14 @@ Add error handling with `try`/`catch` and show useful, user-facing error message
 
 **Theory question:** How do synchronous exceptions and rejected promises travel through this application? Explain where errors should be caught and why catching every error at its source can make failures harder to diagnose.
 
+> **Answer:**
+>
+> A `throw` inside a `.then()` callback does not crash the app synchronously — the promise machinery catches it automatically and turns the promise returned by that `.then()` into a rejected one. From there it behaves exactly like a rejected `fetch()` promise: it skips every following `.then()` (their callbacks simply don't run) and keeps propagating down the chain until it reaches a `.catch()`. This is exactly what happens in `js/bears.js`: `res.ok` being false throws inside the first `.then()`, and the `try`/`catch` around `extractBears(...)` in the second `.then()` re-throws with a clearer message — both cases skip ahead to the `.catch()` at the end of that chain.
+>
+> Errors should be caught at a **useful boundary**, not at every place they could occur. In this app that means two different boundaries: `fetchImageUrl()` catches locally and resolves to `PLACEHOLDER_IMAGE`, because one missing bear image is not fatal and the rest of the page should still work. `loadBears()` catches once at the end of its own chain and shows a user-facing error message to tell the user the whole request failed.
+>
+> If every `fetch`, `.json()`, or property access gets its own try/catch that just logs and returns `undefined`/`{}`, the caller only ever sees empty data — never the actual error. That makes a genuine "no bears" result indistinguishable from a broken request, which is exactly the "failed request as valid empty data" problem this task warns about. Catching once at a meaningful boundary instead keeps the real error message and lets the app show one clear, consistent message to the user instead of many silent, slightly different failures.
+
 #### Task 4: Refactor asynchronous control flow
 
 Replace promise callback chains with `async`/`await` and refactor suitable callbacks to arrow functions. Run independent asynchronous operations concurrently where doing so is safe.

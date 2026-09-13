@@ -170,6 +170,11 @@ audio {
   width: 500px;
 }
 
+.error-message {
+  color: #b00020;
+  font-weight: bold;
+}
+
 /* Comments styling */
 
 .comments {

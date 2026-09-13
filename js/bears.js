@@ -9,6 +9,16 @@ var PLACEHOLDER_IMAGE = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent
   '</svg>'
 );
 
+// A URL returned by the Wikipedia API is not a guarantee that it is reachable or a valid image.
+function verifyImageLoads(url) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() { resolve(url); };
+    img.onerror = function() { resolve(PLACEHOLDER_IMAGE); };
+    img.src = url;
+  });
+}
+
 function fetchImageUrl(fileName) {
   var imageParams = {
     action: "query",
@@ -20,18 +30,25 @@ function fetchImageUrl(fileName) {
   };
 
   var url = baseUrl + "?" + new URLSearchParams(imageParams).toString();
-  return fetch(url).then(function(res) {
-    return res.json();
-  }).then(function(data) {
-    var pages = data.query.pages;
-    var page = Object.values(pages)[0];
-    if (!page.imageinfo || !page.imageinfo[0]) {
+  return fetch(url)
+    .then(function(res) {
+      if (!res.ok) {
+        throw new Error('Wikipedia image API responded with status ' + res.status);
+      }
+      return res.json();
+    })
+    .then(function(data) {
+      var pages = data.query.pages;
+      var page = Object.values(pages)[0];
+      if (!page || !page.imageinfo || !page.imageinfo[0]) {
+        return PLACEHOLDER_IMAGE;
+      }
+      return verifyImageLoads(page.imageinfo[0].url);
+    })
+    .catch(function(error) {
+      console.error('Could not load image for "' + fileName + '":', error);
       return PLACEHOLDER_IMAGE;
-    }
-    return page.imageinfo[0].url;
-  }).catch(function() {
-    return PLACEHOLDER_IMAGE;
-  });
+    });
 }
 
 function extractBears(wikitext) {
@@ -80,7 +97,18 @@ function extractBears(wikitext) {
         '</div>';
       moreBears.innerHTML += html;
     });
+  }).catch(function(error) {
+    console.error('Failed to render bear data:', error);
+    showBearsError('Sorry, the bear data could not be displayed right now. Please try again later.');
   });
+}
+
+function showBearsError(message) {
+  var moreBears = document.querySelector('.more_bears');
+  var errorPara = document.createElement('p');
+  errorPara.className = 'error-message';
+  errorPara.textContent = message;
+  moreBears.appendChild(errorPara);
 }
 
 export function loadBears() {
@@ -94,8 +122,27 @@ export function loadBears() {
   };
 
   fetch(baseUrl + "?" + new URLSearchParams(params).toString())
-    .then(function(res) { return res.json(); })
+    .then(function(res) {
+      if (!res.ok) {
+        throw new Error('Wikipedia API responded with status ' + res.status);
+      }
+      return res.json();
+    })
     .then(function(data) {
-      extractBears(data.parse.wikitext['*']);
+      try {
+        if (data.error) {
+          throw new Error(data.error.info || 'Wikipedia API returned an error');
+        }
+        if (!data.parse || !data.parse.wikitext) {
+          throw new Error('Unexpected response shape from Wikipedia API');
+        }
+        extractBears(data.parse.wikitext['*']);
+      } catch (error) {
+        throw new Error('Could not process bear data: ' + error.message);
+      }
+    })
+    .catch(function(error) {
+      console.error('Failed to load bear data:', error);
+      showBearsError('Sorry, the bear data could not be loaded right now. Please try again later.');
     });
 }
