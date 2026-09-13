@@ -111,12 +111,66 @@ Find and eliminate the remaining bad coding practices. Consider scope, accidenta
 **Theory question:** Select one of your refactorings and explain how JavaScript scope, closures, references, or prototypes caused the original risk. State how you verified that your refactoring preserved behavior.
 
 > **What bad coding practices did you find? Why is it a bad practice and how did you fix it?**
-> 
-> _Present your findings here..._
+>
+> **1. `innerHTML +=` in a loop (`js/bears.js`, `renderBears`) — DOM update pattern**
+>
+> Each iteration read the container's current `innerHTML`, appended the new bear's HTML as a string, and reassigned it. That forces the browser to re-parse and rebuild *every already-rendered bear* on every single iteration, and it also destroys and recreates the existing "More Bears" heading each time. Fixed by building the HTML for all bears once and inserting it in a single call:
 >
 > ```js
-> console.log('Make use of markdown codesnippets to show and explain good/bad practices!')
+> // Before: re-parses the whole container on every bear
+> uniqueBears.forEach((bear) => {
+>   moreBears.innerHTML += html;
+> });
+>
+> // After: one HTML string, inserted once
+> const bearsHtml = bears.map((bear) => /* ... */).join('');
+> moreBears.insertAdjacentHTML('beforeend', bearsHtml);
 > ```
+>
+> **2. `extractBears` mixed parsing, fetching, and rendering — function responsibilities**
+>
+> One function parsed the wikitext, fetched every image, deduplicated the results, *and* wrote HTML into the DOM. Split into `getBears(wikitext)` (pure data: parsing + fetching, no DOM access) and `renderBears(bears)` (DOM only):
+>
+> ```js
+> const bears = await getBears(data.parse.wikitext['*']);
+> renderBears(bears);
+> ```
+>
+> **3. Duplicated "fetch + check status + parse JSON" logic — duplication**
+>
+> `fetchImageUrl` and `loadBears` each repeated the same `fetch(...).then(res => { if (!res.ok) throw ...; return res.json(); })` shape. Extracted into one shared helper:
+>
+> ```js
+> async function fetchJson(url, context) {
+>   const res = await fetch(url);
+>   if (!res.ok) {
+>     throw new Error(context + ' responded with status ' + res.status);
+>   }
+>   return res.json();
+> }
+> ```
+>
+> **4. Comment `<li>` attached to the DOM before its children — mutation and shared references / DOM update pattern**
+>
+> `js/comment.js` called `list.appendChild(listItem)` *before* `namePara`/`commentPara` were appended to `listItem`. It still worked (DOM references stay live), but it means the browser attaches an empty `<li>` and then mutates it twice more in place, instead of building the small subtree once and attaching it a single time:
+>
+> ```js
+> // Before: attach empty node, then mutate it in the live DOM
+> list.appendChild(listItem);
+> listItem.appendChild(namePara);
+> listItem.appendChild(commentPara);
+>
+> // After: build the subtree first, attach once
+> listItem.appendChild(namePara);
+> listItem.appendChild(commentPara);
+> commentList.appendChild(listItem);
+> ```
+>
+> **5. Leftover `var` declarations — scope**
+>
+> Several functions in `js/comment.js`, `js/search.js`, and two spots in `js/bears.js` still used `var` even though none of those bindings were ever reassigned. `var` is function-scoped (not block-scoped) and allows accidental redeclaration, so every remaining `var` was switched to `const`, making the "this is never reassigned" guarantee explicit and checked by the engine.
+>
+> **Accidental globals:** already eliminated in Task 1 — since every script is now an ES module, top-level `const`/`function` declarations live in module scope instead of becoming properties on `window`, so there was nothing further to fix here specifically for this task.
 
 
 ## 2. Dependency- and Build Management Playground

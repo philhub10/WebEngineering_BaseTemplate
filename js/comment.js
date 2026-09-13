@@ -1,12 +1,12 @@
 // Show/hide comments toggle
 export function initCommentToggle() {
-  var showHideBtn = document.querySelector('.show-hide');
-  var commentWrapper = document.querySelector('.comment-wrapper');
+  const showHideBtn = document.querySelector('.show-hide');
+  const commentWrapper = document.querySelector('.comment-wrapper');
 
   commentWrapper.style.display = 'none';
 
   showHideBtn.onclick = () => {
-    var showHideText = showHideBtn.textContent;
+    const showHideText = showHideBtn.textContent;
     if (showHideText === 'Show comments') {
       showHideBtn.textContent = 'Hide comments';
       commentWrapper.style.display = 'block';
@@ -19,28 +19,24 @@ export function initCommentToggle() {
 
 // Comment form stuff
 export function initCommentForm() {
-  var form = document.querySelector('.comment-form');
-  var nameField = document.querySelector('#name');
-  var commentField = document.querySelector('#comment');
-  var list = document.querySelector('.comment-container');
+  const commentForm = document.querySelector('.comment-form');
+  const nameField = document.querySelector('#name');
+  const commentField = document.querySelector('#comment');
+  const commentList = document.querySelector('.comment-container');
 
-  form.onsubmit = (e) => {
+  commentForm.onsubmit = (e) => {
     e.preventDefault();
 
-    var listItem = document.createElement('li');
-    var namePara = document.createElement('p');
-    var commentPara = document.createElement('p');
-    var nameValue = nameField.value;
-    var commentValue = commentField.value;
+    const listItem = document.createElement('li');
+    const namePara = document.createElement('p');
+    const commentPara = document.createElement('p');
 
-    namePara.textContent = nameValue;
-    commentPara.textContent = commentValue;
+    namePara.textContent = nameField.value;
+    commentPara.textContent = commentField.value;
 
-    console.log(nameValue);
-
-    list.appendChild(listItem);
     listItem.appendChild(namePara);
     listItem.appendChild(commentPara);
+    commentList.appendChild(listItem);
 
     nameField.value = '';
     commentField.value = '';

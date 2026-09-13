@@ -1,13 +1,21 @@
 // Fetching bear data
-var baseUrl = "https://en.wikipedia.org/w/api.php";
-var title = "List_of_ursids";
+const baseUrl = "https://en.wikipedia.org/w/api.php";
+const pageTitle = "List_of_ursids";
 
-var PLACEHOLDER_IMAGE = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">' +
   '<rect width="100%" height="100%" fill="#ddd"/>' +
   '<text x="50%" y="50%" font-family="Arial" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image available</text>' +
   '</svg>'
 );
+
+async function fetchJson(url, context) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(context + ' responded with status ' + res.status);
+  }
+  return res.json();
+}
 
 // A URL returned by the Wikipedia API is not a guarantee that it is reachable or a valid image.
 const verifyImageLoads = (url) => {
@@ -20,7 +28,7 @@ const verifyImageLoads = (url) => {
 };
 
 async function fetchImageUrl(fileName) {
-  var imageParams = {
+  const imageParams = {
     action: "query",
     titles: "File:" + fileName,
     prop: "imageinfo",
@@ -29,15 +37,10 @@ async function fetchImageUrl(fileName) {
     origin: "*"
   };
 
-  var url = baseUrl + "?" + new URLSearchParams(imageParams).toString();
+  const url = baseUrl + "?" + new URLSearchParams(imageParams).toString();
 
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error('Wikipedia image API responded with status ' + res.status);
-    }
-
-    const data = await res.json();
+    const data = await fetchJson(url, 'Wikipedia image API');
     const pages = data.query.pages;
     const page = Object.values(pages)[0];
     if (!page || !page.imageinfo || !page.imageinfo[0]) {
@@ -69,16 +72,17 @@ function parseBearRow(row) {
   };
 }
 
-async function extractBears(wikitext) {
+// Parses the wikitext and resolves every bear's image, but does not touch the DOM.
+async function getBears(wikitext) {
   const speciesTables = wikitext.split('{{Species table/end}}');
-  const rows = speciesTables
+  const bearRows = speciesTables
     .flatMap((table) => table.split('{{Species table/row'))
     .map(parseBearRow)
     .filter(Boolean);
 
-  // Each bear's image lookup is independent of the others, so they run concurrently
+  // Each bear's image lookup is independent of the others, so they run concurrently.
   const bears = await Promise.all(
-    rows.map(async (row) => ({
+    bearRows.map(async (row) => ({
       name: row.name,
       binomial: row.binomial,
       range: row.range,
@@ -87,21 +91,27 @@ async function extractBears(wikitext) {
   );
 
   const seenNames = new Set();
-  const uniqueBears = bears.filter((bear) => {
+  return bears.filter((bear) => {
     if (seenNames.has(bear.name)) return false;
     seenNames.add(bear.name);
     return true;
   });
+}
 
+// Only touches the DOM, given already-resolved bear data.
+function renderBears(bears) {
   const moreBears = document.querySelector('.more_bears');
-  uniqueBears.forEach((bear) => {
-    const html = '<div class="bear">' +
-      '<img src="' + bear.image + '" alt="Image of ' + bear.name + '" style="width:200px; height:auto;">' +
-      '<p><b>' + bear.name + '</b> (' + bear.binomial + ')</p>' +
-      '<p>Range: ' + bear.range + '</p>' +
-      '</div>';
-    moreBears.innerHTML += html;
-  });
+  const bearsHtml = bears.map((bear) => (
+    '<div class="bear">' +
+    '<img src="' + bear.image + '" alt="Image of ' + bear.name + '" style="width:200px; height:auto;">' +
+    '<p><b>' + bear.name + '</b> (' + bear.binomial + ')</p>' +
+    '<p>Range: ' + bear.range + '</p>' +
+    '</div>'
+  )).join('');
+
+  // Inserted once as a single fragment instead of repeated innerHTML += in a loop,
+  // so already-rendered content (e.g. the "More Bears" heading) isn't re-parsed every iteration.
+  moreBears.insertAdjacentHTML('beforeend', bearsHtml);
 }
 
 function showBearsError(message) {
@@ -115,7 +125,7 @@ function showBearsError(message) {
 export async function loadBears() {
   const params = {
     action: "parse",
-    page: title,
+    page: pageTitle,
     prop: "wikitext",
     section: 3,
     format: "json",
@@ -123,12 +133,9 @@ export async function loadBears() {
   };
 
   try {
-    const res = await fetch(baseUrl + "?" + new URLSearchParams(params).toString());
-    if (!res.ok) {
-      throw new Error('Wikipedia API responded with status ' + res.status);
-    }
+    const url = baseUrl + "?" + new URLSearchParams(params).toString();
+    const data = await fetchJson(url, 'Wikipedia API');
 
-    const data = await res.json();
     if (data.error) {
       throw new Error(data.error.info || 'Wikipedia API returned an error');
     }
@@ -136,7 +143,8 @@ export async function loadBears() {
       throw new Error('Unexpected response shape from Wikipedia API');
     }
 
-    await extractBears(data.parse.wikitext['*']);
+    const bears = await getBears(data.parse.wikitext['*']);
+    renderBears(bears);
   } catch (error) {
     console.error('Failed to load bear data:', error);
     showBearsError('Sorry, the bear data could not be loaded right now. Please try again later.');
