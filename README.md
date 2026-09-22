@@ -184,6 +184,19 @@ Set up the project with `npm` and a build tool of your choice (for example, Vite
 
 **Theory question:** Distinguish source, build, distribution, and deployment. What does your build tool do in development and in a production build, and why is the lockfile important for reproducibility?
 
+> **Answer:**
+>
+> * **Source:** the version-controlled files that are actually edited (`index.html`, `style.css`, `js/*.js`) — kept in the project root and `js`, never generated.
+> * **Build:** the process that transforms source into a runnable form. In development this is done on the fly; for production it's an explicit step (`npm run build`) that produces optimized output.
+> * **Distribution:** the concrete build output (`dist/`) — a self-contained set of static files that can be handed to any static host, independent of the source tooling used to create it.
+> * **Deployment:** copying/publishing the distribution artifacts to the environment where users actually reach them (a web server, CDN, hosting platform).
+>
+> **Vite in development (`npm run dev`):** starts a dev server that serves each source file as a native ES module over HTTP and transforms files individually and on demand via esbuild — there is no bundling step. This is what makes startup near-instant regardless of project size and enables hot module replacement, at the cost of shipping many small unoptimized module requests (fine for localhost, not for production).
+>
+> **Vite in production (`npm run build`):** uses Rollup internally to bundle all modules into a small number of files, minifies JS/CSS, tree-shakes unused code, content-hashes filenames for cache-busting, and copies static assets from `public/` — writing the final deployable files to `dist/`.
+>
+> **Lockfile:** `package.json` typically declares dependency versions as ranges (e.g. `^8.3.0`), so `npm install` run at different times can legitimately resolve different actual versions. `package-lock.json` pins the exact resolved version and integrity hash of every direct *and* transitive dependency.
+
 #### Task 2: Migrate to TypeScript
 
 Use TypeScript as the primary development language and adapt the source files and configuration accordingly. Enable strict checking, model the application's domain data, and validate data received from external APIs before treating it as a typed value.
