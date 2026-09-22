@@ -1,7 +1,10 @@
 // Show/hide comments toggle
-export function initCommentToggle() {
-  const showHideBtn = document.querySelector('.show-hide');
-  const commentWrapper = document.querySelector('.comment-wrapper');
+export function initCommentToggle(): void {
+  const showHideBtn = document.querySelector<HTMLDivElement>('.show-hide');
+  const commentWrapper = document.querySelector<HTMLDivElement>('.comment-wrapper');
+  if (!showHideBtn || !commentWrapper) {
+    throw new Error('Comment toggle elements not found');
+  }
 
   commentWrapper.style.display = 'none';
 
@@ -18,11 +21,14 @@ export function initCommentToggle() {
 }
 
 // Comment form stuff
-export function initCommentForm() {
-  const commentForm = document.querySelector('.comment-form');
-  const nameField = document.querySelector('#name');
-  const commentField = document.querySelector('#comment');
-  const commentList = document.querySelector('.comment-container');
+export function initCommentForm(): void {
+  const commentForm = document.querySelector<HTMLFormElement>('.comment-form');
+  const nameField = document.querySelector<HTMLInputElement>('#name');
+  const commentField = document.querySelector<HTMLInputElement>('#comment');
+  const commentList = document.querySelector<HTMLUListElement>('.comment-container');
+  if (!commentForm || !nameField || !commentField || !commentList) {
+    throw new Error('Comment form elements not found');
+  }
 
   commentForm.onsubmit = (e) => {
     e.preventDefault();
