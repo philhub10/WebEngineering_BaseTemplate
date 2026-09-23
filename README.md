@@ -207,13 +207,21 @@ Use TypeScript as the primary development language and adapt the source files an
 >
 > * **Structural typing:** TypeScript checks types by shape, not by name. An object counts as a `Bear` as soon as it has `name`, `binomial`, `range`, and `image` — nobody has to write `implements Bear` anywhere, unlike in Java or C#.
 > * **Type erasure:** Types only exist while `tsc` is checking the code. Once compiled, every type, interface, and `as` cast is gone — the JavaScript running in the browser doesn't know what a `Bear` or `WikipediaParseResult` is anymore.
-> * **Why that's a problem here:** `fetch` just gives us raw JSON. Writing `data as WikipediaParseResult` only tells the compiler "trust me" — it doesn't check anything at runtime, and that promise disappears the moment `tsc` finishes. So if Wikipedia ever sends something unexpected, the type alone would not catch it. That's why `src/bears.ts` still checks the real value with `if (!data.parse || !data.parse.wikitext)` before using it — only an actual runtime check, not a compile-time type, can verify what came back over the network.
+> * **Why that's a problem here:** `fetch` just gives us raw JSON. Writing `data as WikipediaParseResult` only tells the compiler "trust me" — it doesn't check anything at runtime, and that promise disappears the moment `tsc` finishes. So if Wikipedia ever sends something unexpected, the type alone would not catch it. That's why `src/bears.ts` still checks the real value with `if (data.parse?.wikitext === undefined)` before using it — only an actual runtime check, not a compile-time type, can verify what came back over the network.
 
 #### Task 3: Add static analysis and formatting
 
 Configure ESLint and Prettier using the rulesets below. Resolve all reported errors in the application code and avoid disabling rules without a written justification.
 
+> **Note on the ESLint config:** `eslint-config-standard-with-typescript` is deprecated (`eslint-config-love` is recommended instead) and only works with ESLint 8's old `.eslintrc` format. This project uses `eslint-config-love` with a flat `eslint.config.js` instead — same rule set, maintained, works with current ESLint. Three rules couldn't be satisfied structurally and are disabled for one line each with a reason in the comment..
+
 **Theory question:** What different problems do a linter, a formatter, and the TypeScript compiler detect? Give one concrete example for each from this project.
+
+> **Answer:**
+>
+> * **Compiler (`tsc`):** wrong *types*. Example: `nameMatch.groups.name` could be `undefined` — `tsc` won't allow it as a plain `string` without a check.
+> * **Linter (ESLint):** valid code that's still risky or bad style. Example: `if (!moreBears)` on a nullable DOM element got flagged — had to write `if (moreBears === null)` instead.
+> * **Formatter (Prettier):** only *layout* — line breaks, quotes, spacing. Never logic, never types.
 
 #### Task 4: Provide a consistent command interface
 

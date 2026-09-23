@@ -5,4 +5,4 @@ import { loadBears } from './bears';
 initSearchHighlighter();
 initCommentToggle();
 initCommentForm();
-loadBears();
+void loadBears();

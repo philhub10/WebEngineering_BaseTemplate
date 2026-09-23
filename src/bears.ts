@@ -29,42 +29,43 @@ interface WikipediaParseResult {
 
 interface WikipediaImageInfoResult {
   query?: {
-    pages?: {
-      [pageId: string]: {
-        imageinfo?: { url: string }[];
-      };
-    };
+    pages?: Record<
+      string,
+      {
+        imageinfo?: Array<{ url: string }>;
+      }
+    >;
   };
 }
 
 const baseUrl = 'https://en.wikipedia.org/w/api.php';
 const pageTitle = 'List_of_ursids';
 
-const PLACEHOLDER_IMAGE =
-  'data:image/svg+xml;charset=UTF-8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">' +
-      '<rect width="100%" height="100%" fill="#ddd"/>' +
-      '<text x="50%" y="50%" font-family="Arial" font-size="14" fill="#666" text-anchor="middle" dominant-baseline="middle">No image available</text>' +
-      '</svg>'
-  );
+const PLACEHOLDER_IMAGE = 'media/placeholder-image.jpg';
 
 // `fetch` and `.json()` can't tell us the shape of the data at compile time,
 // so this just returns `unknown` - the caller has to check it before use.
 async function fetchJson(url: string, context: string): Promise<unknown> {
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(context + ' responded with status ' + res.status);
+    throw new Error(`${context} responded with status ${res.status}`);
   }
-  return res.json();
+  return await res.json();
 }
 
 // A URL returned by the Wikipedia API is not a guarantee that it is reachable or a valid image.
-const verifyImageLoads = (url: string): Promise<string> => {
-  return new Promise((resolve) => {
+const verifyImageLoads = async (url: string): Promise<string> => {
+  // Image.onload/onerror is a callback-based browser API; wrapping it in a
+  // Promise is the standard way to make it awaitable.
+  // eslint-disable-next-line promise/avoid-new -- see comment above
+  return await new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(url);
-    img.onerror = () => resolve(PLACEHOLDER_IMAGE);
+    img.onload = () => {
+      resolve(url);
+    };
+    img.onerror = () => {
+      resolve(PLACEHOLDER_IMAGE);
+    };
     img.src = url;
   });
 };
@@ -72,49 +73,66 @@ const verifyImageLoads = (url: string): Promise<string> => {
 async function fetchImageUrl(fileName: string): Promise<string> {
   const imageParams = {
     action: 'query',
-    titles: 'File:' + fileName,
+    titles: `File:${fileName}`,
     prop: 'imageinfo',
     iiprop: 'url',
     format: 'json',
     origin: '*',
   };
 
-  const url = baseUrl + '?' + new URLSearchParams(imageParams).toString();
+  const url = `${baseUrl}?${new URLSearchParams(imageParams).toString()}`;
 
   try {
     const rawData = await fetchJson(url, 'Wikipedia image API');
+    // The cast itself proves nothing - `data.query?.pages` etc. below are
+    // still read defensively, since every field on WikipediaImageInfoResult
+    // is optional and might not actually be there.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above
     const data = rawData as WikipediaImageInfoResult;
 
     const pages = data.query?.pages;
-    const page = pages ? Object.values(pages)[0] : undefined;
-    const imageUrl = page?.imageinfo?.[0]?.url;
+    const [page] = pages === undefined ? [] : Object.values(pages);
+    const [imageInfo] = page?.imageinfo ?? [];
+    const imageUrl = imageInfo?.url;
 
-    if (!imageUrl) {
+    if (imageUrl === undefined) {
       return PLACEHOLDER_IMAGE;
     }
 
     return await verifyImageLoads(imageUrl);
   } catch (error) {
-    console.error('Could not load image for "' + fileName + '":', error);
+    // The user only sees a generic error message, so log the real cause
+    // here for debugging.
+    // eslint-disable-next-line no-console -- see comment above
+    console.error(`Could not load image for "${fileName}":`, error);
     return PLACEHOLDER_IMAGE;
   }
 }
 
-function parseBearRow(row: string): BearRow | null {
-  const nameMatch = row.match(/\|name=\[\[(.*?)\]\]/);
-  const binomialMatch = row.match(/\|binomial=(.*?)\n/);
-  const imageMatch = row.match(/\|image=(.*?)\n/);
-  const rangeMatch = row.match(/\|range=(.*?)\s*\|/);
+function matchGroup(regex: RegExp, input: string): string | undefined {
+  const match = regex.exec(input);
+  const [value] = Object.values(match?.groups ?? {});
+  return value;
+}
 
-  if (!nameMatch || !binomialMatch || !imageMatch) {
+function parseBearRow(row: string): BearRow | null {
+  const name = matchGroup(/\|name=\[\[(?<name>.*?)\]\]/v, row);
+  const binomial = matchGroup(/\|binomial=(?<binomial>.*?)\n/v, row);
+  const image = matchGroup(/\|image=(?<image>.*?)\n/v, row);
+  const rawRange = matchGroup(/\|range=(?<range>.*?)\s*\|/v, row);
+
+  if (name === undefined || binomial === undefined || image === undefined) {
     return null;
   }
 
   return {
-    name: nameMatch[1],
-    binomial: binomialMatch[1],
-    fileName: imageMatch[1].trim().replace('File:', ''),
-    range: rangeMatch ? rangeMatch[1].replace(/\s*\([^)]*\)/g, '').trim() : 'Unknown',
+    name,
+    binomial,
+    fileName: image.trim().replace('File:', ''),
+    range:
+      rawRange === undefined
+        ? 'Unknown'
+        : rawRange.replace(/\s*\([^\)]*\)/gv, '').trim(),
   };
 }
 
@@ -124,7 +142,7 @@ async function getBears(wikitext: string): Promise<Bear[]> {
   const bearRows = speciesTables
     .flatMap((table) => table.split('{{Species table/row'))
     .map(parseBearRow)
-    .filter((row) => row !== null) as BearRow[];
+    .filter((row) => row !== null);
 
   // Each bear's image lookup is independent of the others, so they run concurrently.
   const bears = await Promise.all(
@@ -147,17 +165,17 @@ async function getBears(wikitext: string): Promise<Bear[]> {
 // Only touches the DOM, given already-resolved bear data.
 function renderBears(bears: Bear[]): void {
   const moreBears = document.querySelector<HTMLElement>('.more_bears');
-  if (!moreBears) {
+  if (moreBears === null) {
     throw new Error('".more_bears" element not found');
   }
   const bearsHtml = bears
     .map(
       (bear) =>
-        '<div class="bear">' +
-        '<img src="' + bear.image + '" alt="Image of ' + bear.name + '" style="width:200px; height:auto;">' +
-        '<p><b>' + bear.name + '</b> (' + bear.binomial + ')</p>' +
-        '<p>Range: ' + bear.range + '</p>' +
-        '</div>'
+        `<div class="bear">` +
+        `<img src="${bear.image}" alt="Image of ${bear.name}" style="width:200px; height:auto;">` +
+        `<p><b>${bear.name}</b> (${bear.binomial})</p>` +
+        `<p>Range: ${bear.range}</p>` +
+        `</div>`
     )
     .join('');
 
@@ -168,7 +186,7 @@ function renderBears(bears: Bear[]): void {
 
 function showBearsError(message: string): void {
   const moreBears = document.querySelector<HTMLElement>('.more_bears');
-  if (!moreBears) {
+  if (moreBears === null) {
     throw new Error('".more_bears" element not found');
   }
   const errorPara = document.createElement('p');
@@ -188,21 +206,35 @@ export async function loadBears(): Promise<void> {
   };
 
   try {
-    const url = baseUrl + '?' + new URLSearchParams(params).toString();
+    const url = `${baseUrl}?${new URLSearchParams(params).toString()}`;
     const rawData = await fetchJson(url, 'Wikipedia API');
+    // Same reasoning as in fetchImageUrl: this promise is checked field by
+    // field below before any of it is trusted.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above
     const data = rawData as WikipediaParseResult;
 
-    if (data.error) {
-      throw new Error(data.error.info || 'Wikipedia API returned an error');
+    const { error } = data;
+    if (error !== undefined) {
+      const { info } = error;
+      throw new Error(
+        info !== undefined && info !== ''
+          ? info
+          : 'Wikipedia API returned an error'
+      );
     }
-    if (!data.parse || !data.parse.wikitext) {
+    if (data.parse?.wikitext === undefined) {
       throw new Error('Unexpected response shape from Wikipedia API');
     }
 
     const bears = await getBears(data.parse.wikitext['*']);
     renderBears(bears);
   } catch (error) {
+    // The user only sees a generic error message, so log the real cause
+    // here for debugging.
+    // eslint-disable-next-line no-console -- see comment above
     console.error('Failed to load bear data:', error);
-    showBearsError('Sorry, the bear data could not be loaded right now. Please try again later.');
+    showBearsError(
+      'Sorry, the bear data could not be loaded right now. Please try again later.'
+    );
   }
 }

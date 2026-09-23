@@ -1,7 +1,7 @@
 // Search highlighter
 export function initSearchHighlighter(): void {
   const searchForm = document.querySelector<HTMLFormElement>('.search');
-  if (!searchForm) {
+  if (searchForm === null) {
     throw new Error('Search form not found');
   }
 
@@ -9,36 +9,47 @@ export function initSearchHighlighter(): void {
     e.preventDefault();
 
     document.querySelectorAll('.highlight').forEach((el) => {
-      const parent = el.parentNode;
-      if (!parent) return;
-      parent.replaceChild(document.createTextNode(el.textContent || ''), el);
+      const { parentNode: parent } = el;
+      if (parent === null) return;
+      parent.replaceChild(document.createTextNode(el.textContent), el);
       parent.normalize();
     });
 
-    const queryField = searchForm.querySelector<HTMLInputElement>('input[name="q"]');
-    if (!queryField) {
+    const queryField =
+      searchForm.querySelector<HTMLInputElement>('input[name="q"]');
+    if (queryField === null) {
       throw new Error('Search input not found');
     }
     const searchKey = queryField.value.trim();
-    if (!searchKey) return;
+    if (searchKey === '') return;
 
-    const regex = new RegExp('(' + searchKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    const escapedKey = searchKey.replace(/[.*+?^$\{\}\(\)\|\[\]\\]/gv, '\\$&');
+    const regex = new RegExp(`(${escapedKey})`, 'giv');
 
     const walk = (node: Node): void => {
-      if (node.nodeType === 3) { // Text node
-        const match = node.nodeValue?.match(regex);
-        if (match) {
+      if (node instanceof Text) {
+        const text = node.nodeValue ?? '';
+        const match = text.match(regex);
+        if (match !== null) {
           const span = document.createElement('span');
-          span.innerHTML = (node.nodeValue || '').replace(regex, '<mark class="highlight">$1</mark>');
-          (node as ChildNode).replaceWith(...Array.from(span.childNodes));
+          span.innerHTML = text.replace(
+            regex,
+            '<mark class="highlight">$1</mark>'
+          );
+          node.replaceWith(...Array.from(span.childNodes));
         }
-      } else if (node.nodeType === 1 && (node as Element).tagName !== 'SCRIPT' && (node as Element).tagName !== 'STYLE' && (node as Element).tagName !== 'FORM') {
+      } else if (
+        node instanceof Element &&
+        node.tagName !== 'SCRIPT' &&
+        node.tagName !== 'STYLE' &&
+        node.tagName !== 'FORM'
+      ) {
         node.childNodes.forEach(walk);
       }
     };
 
     const article = document.querySelector<HTMLElement>('article');
-    if (!article) {
+    if (article === null) {
       throw new Error('Article element not found');
     }
     walk(article);
