@@ -238,6 +238,16 @@ The `build`, `lint`, and `format:check` commands must exit with a non-zero statu
 
 **Theory question:** Why are stable, composable commands such as these useful as an interface for developers and CI? Explain idempotence and identify which of your scripts should be idempotent.
 
+> **Answer:**
+>
+> A fixed set of `npm run <script>` names gives developers and CI the same entry points regardless of which build tool, linter, or formatter sits behind them. A developer (or a CI workflow file) only needs to know `npm run build`/`lint`/`format:check` — they don't need to know that this project happens to use Vite, `eslint-config-love`, or Prettier, and swapping any of those tools later would not require touching CI configuration.
+>
+> **Idempotence** means running an operation multiple times has the same effect (and produces the same result) as running it once — repeating it does not change the outcome further or cause errors.
+>
+> * `lint`, `format:check`, and `build` are read-only checks (build only reads source and writes to `dist`, which is regenerated identically each time from the same source) — running any of them twice in a row with no source changes leaves the repository in the same state and reports the same result both times.
+> * `format` and `lint:fix` are also idempotent in the meaningful sense: they rewrite files to a canonical form (Prettier's formatting rules, ESLint's auto-fixes), so once a file is already in that canonical form, running the script again won't keep re-formatting or re-fixing.
+> * `dev` is the exception — it starts a long-running server process rather than performing a one-shot check, so "idempotent" doesn't really apply to it.
+
 #### Task 5: Enforce quality before integration
 
 Configure a pre-commit hook that checks staged code using [husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/lint-staged/lint-staged). Configure a continuous-integration workflow that installs dependencies from the lockfile and runs the non-mutating build, type, lint, and formatting checks for every push or pull request.
