@@ -10,13 +10,22 @@
     "lint": "eslint src --ext .js,.ts",
     "lint:fix": "eslint src --ext .js,.ts --fix",
     "format": "prettier --write \"src/**/*.{js,ts}\"",
-    "format:check": "prettier --check \"src/**/*.{js,ts}\""
+    "format:check": "prettier --check \"src/**/*.{js,ts}\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "eslint": "^10.11.0",
     "eslint-config-love": "^157.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
     "prettier": "^3.9.8",
     "typescript": "^6.0.3",
     "vite": "^8.3.0"

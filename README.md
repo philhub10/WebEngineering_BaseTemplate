@@ -254,6 +254,20 @@ Configure a pre-commit hook that checks staged code using [husky](https://typico
 
 **Theory question:** Compare a local pre-commit hook with a CI quality gate. Why is CI still necessary when hooks are configured, and why should CI use non-mutating checks rather than automatically rewriting source files?
 
+> **Answer:**
+>
+> A **local pre-commit hook** runs on the developer's own machine, right before a commit is created, and only against the files that are actually staged for that commit. It only lints/formats the changed files, not the whole project.
+>
+> A **CI quality gate** runs on a server, triggered by `push`/`pull_request`, against the full project in a clean environment with dependencies installed via `npm ci` from the committed `package-lock.json`.
+>
+> **Why CI is still necessary even with hooks configured:**
+> * Hooks are **bypassable** — they can be skipped with `git commit --no-verify`, and a fresh clone doesn't have hooks installed at all until `npm install` runs `prepare`/`husky`.
+> * Hooks only see **staged files**, not the whole project, so they can miss issues introduced by files not touched in that commit.
+> * Hooks run in whatever environment the developer's machine happens to be in. CI runs in a clean, reproducible environment installed strictly from the lockfile.
+> * CI is the **only gate that can't be skipped** before code is merged/reviewed, since it runs on the server regardless of what happened locally.
+>
+> **Why CI should use non-mutating checks instead of auto-fixing:** CI's job is to *verify* a specific commit, not to *change* it. If CI silently rewrote files (e.g. ran `eslint --fix`/`prettier --write` and let the job pass), a "green" CI run would no longer correspond to the code that was actually pushed/reviewed.
+
 
 **ESLint Configurations**
 
