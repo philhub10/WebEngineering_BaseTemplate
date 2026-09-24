@@ -6,5 +6,3 @@ initSearchHighlighter();
 initCommentToggle();
 initCommentForm();
 void loadBears();
-
-const kaputtCheck = 123;
