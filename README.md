@@ -307,6 +307,17 @@ Add React (or another framework of your choice) to the existing Vite and TypeScr
 
 **Theory question:** Contrast imperative DOM updates with React's declarative model. What happens during React's render, reconciliation, and commit phases, and why should code outside React not modify DOM nodes owned by the React root? If you chose not to use React, answer the same questions in the context of your chosen framework.
 
+> **Answer:** (Angular was chosen instead of React)
+>
+> Until now the code was entirely imperative: `bears.ts`, `comment.ts`, and `search.ts` call `document.querySelector`, then push updates onto specific nodes by hand (`.insertAdjacentHTML`, `.style.display = ...`, `.textContent = ...`). Angular's model is declarative: the template (`app.html`) describes what the DOM should look like as a function of the component's state, and the framework's own change-detection takes care of reconciling the live DOM to match whenever that state changes.
+>
+> Angular doesn't use React's exact three-phase vocabulary, but has a close analogue:
+> * **Creation:** when a component is instantiated, Angular runs its compiled template function once in "creation mode," building the component's actual DOM nodes and wiring up the static structure.
+> * **Change detection (≈ render/reconciliation):** afterwards, whenever something could have changed (a signal being read/written), Angular re-runs each affected component's template function in "update mode." This re-evaluates every binding expression and compares each new value against the one stored from the previous run.
+> * **DOM update (≈ commit):** Angular's compiler already knows, for every binding, exactly which DOM node and property it maps to. So where React re-renders a virtual tree and then diffs it against the previous one to discover what to patch, Angular skips that diffing step entirely and writes straight to the one property that actually changed.
+>
+> Code outside Angular must not touch DOM nodes owned by an Angular root: the framework keeps its own record of "what I last rendered into this node" so that the next change-detection run only has to touch what's different.
+
 #### Task 2: Design the component tree
 
 Decompose the interface into components organised by feature. Use props where appropriate, keep rendering pure, and render bear collections with stable keys.

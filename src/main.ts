@@ -1,8 +1,8 @@
-import { initSearchHighlighter } from './search';
-import { initCommentToggle, initCommentForm } from './comment';
-import { loadBears } from './bears';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { appConfig } from './app/app.config';
+import { App } from './app/app';
 
-initSearchHighlighter();
-initCommentToggle();
-initCommentForm();
-void loadBears();
+bootstrapApplication(App, appConfig).catch((error: unknown) => {
+  // eslint-disable-next-line no-console -- surface fatal bootstrap failures
+  console.error('Failed to bootstrap application:', error);
+});

@@ -4,22 +4,39 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint src --ext .js,.ts",
-    "lint:fix": "eslint src --ext .js,.ts --fix",
-    "format": "prettier --write \"src/**/*.{js,ts}\"",
-    "format:check": "prettier --check \"src/**/*.{js,ts}\"",
+    "ng": "ng",
+    "dev": "ng serve",
+    "build": "ng build",
+    "preview": "ng serve --configuration production",
+    "lint": "ng lint",
+    "lint:fix": "ng lint --fix",
+    "format": "prettier --write \"src/**/*.{ts,html,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css}\"",
     "prepare": "husky"
   },
   "lint-staged": {
-    "src/**/*.{js,ts}": [
+    "src/**/*.{ts,html}": [
       "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.css": [
       "prettier --write"
     ]
   },
+  "dependencies": {
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
   "devDependencies": {
+    "@angular/build": "^22.2.1",
+    "@angular/cli": "^22.2.1",
+    "@angular/compiler-cli": "^22.2.0",
+    "@eslint/js": "^10.0.1",
+    "angular-eslint": "^22.5.0",
     "eslint": "^10.11.0",
     "eslint-config-love": "^157.0.0",
     "eslint-config-prettier": "^10.1.8",
@@ -28,6 +45,6 @@
     "lint-staged": "^17.5.1",
     "prettier": "^3.9.8",
     "typescript": "^6.0.3",
-    "vite": "^8.3.0"
+    "typescript-eslint": "^8.69.0"
   }
 }
