@@ -338,6 +338,14 @@ Implement the comment toggle, comment form, and search behavior with React event
 
 **Theory question:** Distinguish props, stored state, and derived values. Explain why direct mutation can produce incorrect React behavior and when lifting state is preferable to introducing context.
 
+> **Answer:**
+>
+> A prop (Angular: `input()`) is data a component receives from its parent and never changes itself — `CommentToggle`'s `expanded` and `CommentList`'s `comments` are both read-only from the child's side. Stored state is data a component owns and can change on its own, like `CommentsSection`'s `comments`/`commentsExpanded` signals or `CommentForm`'s draft `name`/`text` signals. A derived value isn't stored at all — it's computed on the spot from existing props/state, like `CommentToggle`'s `expanded() ? 'Hide comments' : 'Show comments'` label; storing that as its own state would risk it drifting out of sync with `expanded`.
+>
+> Both React and Angular (with signals/`OnPush`) decide whether to re-render by comparing a new value to the previous one by reference. Mutating an array/object in place keeps the same reference, so the comparison sees "unchanged" and skips re-rendering even though the data changed.
+>
+> Lift state to the closest common owner when only a bounded group of components need to coordinate over it — here, `commentsExpanded` and `comments` live in `CommentsSection` since only its three children touch them. Context (Angular: a shared service) becomes preferable once state is needed by many components spread across unrelated branches of the tree, where lifting would mean threading props through components that don't otherwise care about that data.
+
 #### Task 4: Load and represent remote data
 
 Load and validate the bear data within the React application. Represent loading, success, empty, and error states explicitly; prevent stale requests from overwriting newer results; and retain the image fallback behavior from Playground 1.

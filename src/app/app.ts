@@ -1,7 +1,5 @@
 import type { OnInit } from '@angular/core';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { initSearchHighlighter } from './search';
-import { initCommentToggle, initCommentForm } from './comment';
 import type { Bear } from './bears';
 import { loadBears } from './bears';
 import { SiteHeader } from './site-header/site-header';
@@ -32,9 +30,6 @@ export class App implements OnInit {
   protected readonly bears = signal<Bear[]>([]);
 
   ngOnInit(): void {
-    initSearchHighlighter();
-    initCommentToggle();
-    initCommentForm();
     loadBears()
       .then((bears) => {
         this.bears.set(bears);

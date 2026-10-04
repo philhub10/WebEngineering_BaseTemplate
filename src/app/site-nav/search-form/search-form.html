@@ -1,4 +1,10 @@
-<form class="search">
-  <input type="search" name="q" placeholder="Search query" />
+<form class="search" (submit)="onSubmit($event)">
+  <input
+    type="search"
+    name="q"
+    placeholder="Search query"
+    [value]="query()"
+    (input)="onQueryInput($event)"
+  />
   <input type="submit" value="Go!" />
 </form>

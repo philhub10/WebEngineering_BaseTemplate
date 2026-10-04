@@ -1,8 +1,14 @@
 <section class="comments">
-  <app-comment-toggle />
+  <app-comment-toggle
+    [expanded]="commentsExpanded()"
+    (toggled)="onToggleComments()"
+  />
 
-  <div class="comment-wrapper">
-    <app-comment-form />
-    <app-comment-list />
+  <div
+    class="comment-wrapper"
+    [style.display]="commentsExpanded() ? 'block' : 'none'"
+  >
+    <app-comment-form (submitted)="onAddComment($event)" />
+    <app-comment-list [comments]="comments()" />
   </div>
 </section>

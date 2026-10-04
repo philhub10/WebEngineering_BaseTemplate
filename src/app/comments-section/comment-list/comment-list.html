@@ -1,7 +1,9 @@
 <font size="6">Comments</font>
 <ul class="comment-container">
-  <li>
-    <p>Bob Fossil</p>
-    <p>Oh I am so glad you taught me all about the big brown angry guys...</p>
-  </li>
+  @for (comment of comments(); track comment.id) {
+    <li>
+      <p>{{ comment.name }}</p>
+      <p>{{ comment.text }}</p>
+    </li>
+  }
 </ul>

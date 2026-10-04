@@ -1,5 +1,5 @@
 <font size="6">Add comment</font>
-<form class="comment-form">
+<form class="comment-form" (submit)="onSubmit($event)">
   <div class="flex-pair">
     Your name:
     <input
@@ -8,6 +8,8 @@
       id="name"
       placeholder="Enter your name"
       required
+      [value]="name()"
+      (input)="onNameInput($event)"
     />
   </div>
   <div class="flex-pair">
@@ -18,6 +20,8 @@
       id="comment"
       placeholder="Enter your comment"
       required
+      [value]="text()"
+      (input)="onTextInput($event)"
     />
   </div>
   <div>

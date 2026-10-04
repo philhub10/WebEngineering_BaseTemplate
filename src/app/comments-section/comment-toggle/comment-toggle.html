@@ -1,1 +1,4 @@
-<div class="show-hide">Show comments</div>
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -- keyboard accessibility for this control is addressed in the dedicated accessibility workshop -->
+<div class="show-hide" (click)="toggled.emit()">
+  {{ expanded() ? 'Hide comments' : 'Show comments' }}
+</div>
