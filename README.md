@@ -324,6 +324,14 @@ Decompose the interface into components organised by feature. Use props where ap
 
 **Theory question:** Explain how component boundaries and typed props act as contracts. What makes a key stable, why does React need keys during reconciliation, and why is an array index unsuitable when list entries can change order?
 
+> **Answer:**
+>
+> A component only exposes what it declares as input (Angular: `input<T>()`) — everything about how it renders internally stays private, so parent and child can change independently as long as the input type stays the same. Typed props make that contract machine-checked: `BearCard` declares `bear = input.required<Bear>()`, so passing the wrong shape fails at compile time instead of breaking silently at runtime.
+>
+> A stable key is a value tied to an item's own identity (not its position) that stays the same across re-renders. `track bear.name` is safe since `getBears` already deduplicates bears by name.
+>
+> Angular's `@for`/React's list rendering diff the old list against the new one to decide which DOM nodes to keep, move or destroy instead of rebuilding everything. An index is unsuitable once order can change: deleting `A` from `[A, B, C]` leaves `[B, C]`, so index 0 now means `B` instead of `A` and index 1 means `C` instead of `B` — by position alone it looks like every item changed, when really only `A` was removed and `B`/`C` are unchanged. A key tied to identity (not position) matches `B` to `B` and `C` to `C` correctly.
+
 #### Task 3: Model state and interaction
 
 Implement the comment toggle, comment form, and search behavior with React events and state. Use controlled inputs, immutable updates, and derived values rather than duplicate state. Lift state only to the closest common owner that needs it.

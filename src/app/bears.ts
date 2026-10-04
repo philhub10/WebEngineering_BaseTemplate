@@ -162,40 +162,10 @@ async function getBears(wikitext: string): Promise<Bear[]> {
   });
 }
 
-// Only touches the DOM, given already-resolved bear data.
-function renderBears(bears: Bear[]): void {
-  const moreBears = document.querySelector<HTMLElement>('.more_bears');
-  if (moreBears === null) {
-    throw new Error('".more_bears" element not found');
-  }
-  const bearsHtml = bears
-    .map(
-      (bear) =>
-        `<div class="bear">` +
-        `<img src="${bear.image}" alt="Image of ${bear.name}" style="width:200px; height:auto;">` +
-        `<p><b>${bear.name}</b> (${bear.binomial})</p>` +
-        `<p>Range: ${bear.range}</p>` +
-        `</div>`
-    )
-    .join('');
-
-  // Inserted once as a single fragment instead of repeated innerHTML += in a loop,
-  // so already-rendered content (e.g. the "More Bears" heading) isn't re-parsed every iteration.
-  moreBears.insertAdjacentHTML('beforeend', bearsHtml);
-}
-
-function showBearsError(message: string): void {
-  const moreBears = document.querySelector<HTMLElement>('.more_bears');
-  if (moreBears === null) {
-    throw new Error('".more_bears" element not found');
-  }
-  const errorPara = document.createElement('p');
-  errorPara.className = 'error-message';
-  errorPara.textContent = message;
-  moreBears.appendChild(errorPara);
-}
-
-export async function loadBears(): Promise<void> {
+// Fetches and parses the bear data. Callers decide how to represent the
+// result (and any error) in the UI - this module never touches the DOM, so
+// its result can be rendered declaratively from component state.
+export async function loadBears(): Promise<Bear[]> {
   const params = {
     action: 'parse',
     page: pageTitle,
@@ -205,36 +175,25 @@ export async function loadBears(): Promise<void> {
     origin: '*',
   };
 
-  try {
-    const url = `${baseUrl}?${new URLSearchParams(params).toString()}`;
-    const rawData = await fetchJson(url, 'Wikipedia API');
-    // Same reasoning as in fetchImageUrl: this promise is checked field by
-    // field below before any of it is trusted.
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above
-    const data = rawData as WikipediaParseResult;
+  const url = `${baseUrl}?${new URLSearchParams(params).toString()}`;
+  const rawData = await fetchJson(url, 'Wikipedia API');
+  // Same reasoning as in fetchImageUrl: this promise is checked field by
+  // field below before any of it is trusted.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above
+  const data = rawData as WikipediaParseResult;
 
-    const { error } = data;
-    if (error !== undefined) {
-      const { info } = error;
-      throw new Error(
-        info !== undefined && info !== ''
-          ? info
-          : 'Wikipedia API returned an error'
-      );
-    }
-    if (data.parse?.wikitext === undefined) {
-      throw new Error('Unexpected response shape from Wikipedia API');
-    }
-
-    const bears = await getBears(data.parse.wikitext['*']);
-    renderBears(bears);
-  } catch (error) {
-    // The user only sees a generic error message, so log the real cause
-    // here for debugging.
-    // eslint-disable-next-line no-console -- see comment above
-    console.error('Failed to load bear data:', error);
-    showBearsError(
-      'Sorry, the bear data could not be loaded right now. Please try again later.'
+  const { error } = data;
+  if (error !== undefined) {
+    const { info } = error;
+    throw new Error(
+      info !== undefined && info !== ''
+        ? info
+        : 'Wikipedia API returned an error'
     );
   }
+  if (data.parse?.wikitext === undefined) {
+    throw new Error('Unexpected response shape from Wikipedia API');
+  }
+
+  return await getBears(data.parse.wikitext['*']);
 }
