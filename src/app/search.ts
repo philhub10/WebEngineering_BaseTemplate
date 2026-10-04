@@ -36,8 +36,6 @@ export function highlightArticleMatches(query: string): void {
   };
 
   const article = document.querySelector<HTMLElement>('article');
-  if (article === null) {
-    throw new Error('Article element not found');
-  }
+  if (article === null) return;
   walk(article);
 }

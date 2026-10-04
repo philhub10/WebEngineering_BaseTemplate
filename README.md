@@ -364,6 +364,14 @@ Add at least a list route and a bear-detail route using a stable bear identifier
 
 **Theory question:** Distinguish client-side rendering, a single-page application, and client-side routing. Compare route parameters with query parameters, and describe one benefit and one cost of the SPA architecture used here.
 
+> **Answer:**
+>
+> Client-side rendering means the browser, not a server, builds the HTML from JavaScript — the server only ever sends `src/index.html` (basically just `<app-root></app-root>` and a script tag) and Angular renders everything into it. A single-page application means the whole app lives on one page load: navigating from the bear list to a bear's detail page never requests a new HTML document, the existing JS just swaps what's displayed. Client-side routing is the mechanism that makes that swapping feel like separate pages: the Router matches the current URL against `app.routes.ts` and decides which component renders into `<router-outlet>`.
+>
+> A route parameter (`:name` in `bears/:name`) identifies *which* resource a route renders. A query parameter (`?q=...`) is optional view state layered on top of a route.
+>
+> Benefit: navigating between the list and a bear's detail page doesn't re-download or re-initialize the app, and state outside `<router-outlet>` (like a half-typed search query in `SearchForm`) survives the navigation, since `App`'s header/nav/footer are never destroyed. Cost: since we chose client-side rendering with no server-side rendering (`ng new` was run with `--ssr=false`), the server only ever sends a near-empty `index.html`; a crawler or link-preview bot that doesn't execute JavaScript sees no bear content at all, on either route — hurting SEO and link previews in a way a server-rendered page wouldn't.
+
 ---
 
 ## In-Class Accessibility Workshop

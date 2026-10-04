@@ -1,0 +1,23 @@
+<main>
+  <article>
+    <p><a routerLink="/">&larr; Back to all bears</a></p>
+
+    @if (isLoading()) {
+      <p>Loading bear...</p>
+    } @else if (errorMessage(); as message) {
+      <p class="error-message">{{ message }}</p>
+    } @else if (isNotFound()) {
+      <p>No bear named "{{ name() }}" was found.</p>
+    } @else if (bear(); as bear) {
+      <font size="6">{{ bear.name }}</font>
+      <br /><br />
+      <img
+        [src]="bear.image"
+        [alt]="'Image of ' + bear.name"
+        style="width: 400px; height: auto"
+      />
+      <p><b>Scientific name:</b> {{ bear.binomial }}</p>
+      <p><b>Range:</b> {{ bear.range }}</p>
+    }
+  </article>
+</main>
