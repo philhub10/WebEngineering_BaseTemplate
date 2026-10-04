@@ -352,6 +352,12 @@ Load and validate the bear data within the React application. Represent loading,
 
 **Theory question:** Why is fetching data a synchronization with an external system rather than part of pure rendering? Explain how cleanup or cancellation prevents race conditions when a component unmounts or a request becomes irrelevant.
 
+> **Answer:**
+>
+> Pure rendering describes the UI from the current state/props alone, the same way every time, with no observable side effect and nothing left running afterward. In Fetching, the result depends on something outside the component (the Wikipedia API, the network, timing), it takes unpredictable time. That's why it belongs in a lifecycle hook like `ngOnInit` rather than directly in a template or computed signal — it's synchronizing component state with an external system, not deriving it from existing state.
+>
+> Because the fetch keeps running after the function that started it returns, two things can go wrong by the time it resolves: the component that asked for it may no longer exist (navigated away, destroyed), or a newer, more relevant request may have started since, making the old one's eventual result stale. `BearList` guards both: `fetchBears()` aborts any previous `AbortController` before starting a new one, and `ngOnDestroy` aborts it when the component is destroyed.
+
 #### Task 5: Add client-side routing and verify the migration
 
 Add at least a list route and a bear-detail route using a stable bear identifier as a route parameter. Use query parameters for optional search/filter view state where appropriate. Verify that every requirement from Playground 1 still works and that all Playground 2 quality commands pass.

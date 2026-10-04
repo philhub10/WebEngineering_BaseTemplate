@@ -45,8 +45,12 @@ const PLACEHOLDER_IMAGE = 'media/placeholder-image.jpg';
 
 // `fetch` and `.json()` can't tell us the shape of the data at compile time,
 // so this just returns `unknown` - the caller has to check it before use.
-async function fetchJson(url: string, context: string): Promise<unknown> {
-  const res = await fetch(url);
+async function fetchJson(
+  url: string,
+  context: string,
+  signal?: AbortSignal
+): Promise<unknown> {
+  const res = await fetch(url, { signal });
   if (!res.ok) {
     throw new Error(`${context} responded with status ${res.status}`);
   }
@@ -70,7 +74,10 @@ const verifyImageLoads = async (url: string): Promise<string> => {
   });
 };
 
-async function fetchImageUrl(fileName: string): Promise<string> {
+async function fetchImageUrl(
+  fileName: string,
+  signal?: AbortSignal
+): Promise<string> {
   const imageParams = {
     action: 'query',
     titles: `File:${fileName}`,
@@ -83,7 +90,7 @@ async function fetchImageUrl(fileName: string): Promise<string> {
   const url = `${baseUrl}?${new URLSearchParams(imageParams).toString()}`;
 
   try {
-    const rawData = await fetchJson(url, 'Wikipedia image API');
+    const rawData = await fetchJson(url, 'Wikipedia image API', signal);
     // The cast itself proves nothing - `data.query?.pages` etc. below are
     // still read defensively, since every field on WikipediaImageInfoResult
     // is optional and might not actually be there.
@@ -137,7 +144,10 @@ function parseBearRow(row: string): BearRow | null {
 }
 
 // Parses the wikitext and resolves every bear's image, but does not touch the DOM.
-async function getBears(wikitext: string): Promise<Bear[]> {
+async function getBears(
+  wikitext: string,
+  signal?: AbortSignal
+): Promise<Bear[]> {
   const speciesTables = wikitext.split('{{Species table/end}}');
   const bearRows = speciesTables
     .flatMap((table) => table.split('{{Species table/row'))
@@ -150,7 +160,7 @@ async function getBears(wikitext: string): Promise<Bear[]> {
       name: row.name,
       binomial: row.binomial,
       range: row.range,
-      image: await fetchImageUrl(row.fileName),
+      image: await fetchImageUrl(row.fileName, signal),
     }))
   );
 
@@ -164,8 +174,11 @@ async function getBears(wikitext: string): Promise<Bear[]> {
 
 // Fetches and parses the bear data. Callers decide how to represent the
 // result (and any error) in the UI - this module never touches the DOM, so
-// its result can be rendered declaratively from component state.
-export async function loadBears(): Promise<Bear[]> {
+// its result can be rendered declaratively from component state. Pass an
+// AbortSignal so a caller that no longer needs the result (a newer request
+// superseded it, or the component was destroyed) can cancel the underlying
+// network requests instead of letting them finish uselessly in the background.
+export async function loadBears(signal?: AbortSignal): Promise<Bear[]> {
   const params = {
     action: 'parse',
     page: pageTitle,
@@ -176,7 +189,7 @@ export async function loadBears(): Promise<Bear[]> {
   };
 
   const url = `${baseUrl}?${new URLSearchParams(params).toString()}`;
-  const rawData = await fetchJson(url, 'Wikipedia API');
+  const rawData = await fetchJson(url, 'Wikipedia API', signal);
   // Same reasoning as in fetchImageUrl: this promise is checked field by
   // field below before any of it is trusted.
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above
@@ -195,5 +208,5 @@ export async function loadBears(): Promise<Bear[]> {
     throw new Error('Unexpected response shape from Wikipedia API');
   }
 
-  return await getBears(data.parse.wikitext['*']);
+  return await getBears(data.parse.wikitext['*'], signal);
 }

@@ -1,3 +1,13 @@
-@for (bear of bears(); track bear.name) {
-  <app-bear-card [bear]="bear" />
+<font size="5">More Bears</font>
+
+@if (isLoading()) {
+  <p>Loading more bears...</p>
+} @else if (errorMessage(); as message) {
+  <p class="error-message">{{ message }}</p>
+} @else if (isEmpty()) {
+  <p>No bears found.</p>
+} @else {
+  @for (bear of bears(); track bear.name) {
+    <app-bear-card [bear]="bear" />
+  }
 }
