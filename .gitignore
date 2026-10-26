@@ -13,6 +13,7 @@ dist-ssr
 build
 .angular
 *.local
+docs
 
 # Editor directories and files
 .vscode/*
@@ -26,3 +27,7 @@ build
 *.sw?
 
 coverage
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
