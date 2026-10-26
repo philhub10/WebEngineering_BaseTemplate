@@ -414,6 +414,19 @@ Implement `GET /api/bears` and `GET /api/bears/:id`. The API fetches the "List o
 
 **Theory question:** What is a Backend for Frontend, and what moves from the browser to the server when you introduce one (shape of the data, secrets, headers, CORS, failure handling)? Why is an empty 200 on upstream failure worse than a 502?
 
+> **Answer:**
+>
+> A **Backend for Frontend (BFF)** is a thin server owned by the frontend team that serves exactly one frontend and gives it the data in the shape it needs. Here `apps/api` is the BFF: the browser only calls `/api/...`, the BFF calls Wikipedia.
+>
+> What moves to the server:
+>
+> * **Data shape:** parsing the wikitext and validating with zod happen on the server, and the browser receives a typed `Bear`.
+> * **Secrets and headers:** keys, tokens and the `User-Agent` live in the server's environment, never in the browser.
+> * **CORS:** the browser only talks to its own origin, and server-to-server calls are not subject to CORS.
+> * **Failure handling:** timeouts, validating the upstream answer and mapping failures to 502/504 happen in one place.
+>
+> **Empty 200 vs. 502:** `200 []` falsely says "success, no bears". The client shows "No bears found" instead of an error, caches may store the empty list, and monitoring misses the outage. A 502 is honest: the upstream failed, the client shows its error state and can retry, and monitoring sees the failure.
+
 #### Task 3: Design the comments API
 
 Design and implement a comments resource with `GET /api/bears/:id/comments`, `POST /api/bears/:id/comments` (201 Created with a `Location` header) and `DELETE /api/comments/:commentId` (204 No Content). Validate the request body with zod (author and text non-empty, sensible length limits) and answer 400 for invalid input and 404 for unknown bears or comments. Store comments in memory for now (a `Map`) and connect the comment section of the React app to the API.

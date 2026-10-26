@@ -12,6 +12,13 @@ export const Env = z.object({
     .min(MIN_PORT)
     .max(MAX_PORT)
     .default(DEFAULT_PORT),
+  WIKIPEDIA_BASE_URL: z.url().default('https://en.wikipedia.org'),
+  USER_AGENT: z
+    .string()
+    .nonempty()
+    .default(
+      'BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)'
+    ),
 });
 
 export type Env = z.infer<typeof Env>;

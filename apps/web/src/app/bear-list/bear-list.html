@@ -7,7 +7,7 @@
 } @else if (isEmpty()) {
   <p>No bears found.</p>
 } @else {
-  @for (bear of bears(); track bear.name) {
+  @for (bear of bears(); track bear.id) {
     <app-bear-card [bear]="bear" />
   }
 }

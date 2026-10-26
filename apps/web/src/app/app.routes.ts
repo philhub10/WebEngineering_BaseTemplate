@@ -4,6 +4,6 @@ import { BearDetailPage } from './bear-detail-page/bear-detail-page';
 
 export const routes: Routes = [
   { path: '', component: HomePage },
-  { path: 'bears/:name', component: BearDetailPage },
+  { path: 'bears/:id', component: BearDetailPage },
   { path: '**', redirectTo: '' },
 ];

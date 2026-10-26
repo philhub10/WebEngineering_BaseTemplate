@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Bear } from '../bears';
-import { loadBears } from '../bears';
+import { loadBear } from '../bears';
 
 type DetailState =
   | { status: 'loading' }
@@ -23,9 +23,9 @@ type DetailState =
   templateUrl: './bear-detail-page.html',
 })
 export class BearDetailPage implements OnInit, OnDestroy {
-  // Bound automatically from the `:name` route parameter by the router
+  // Bound automatically from the `:id` route parameter by the router
   // (see `withComponentInputBinding()` in app.config.ts).
-  readonly name = input.required<string>();
+  readonly id = input.required<string>();
 
   private readonly state = signal<DetailState>({ status: 'loading' });
 
@@ -61,14 +61,11 @@ export class BearDetailPage implements OnInit, OnDestroy {
 
     this.state.set({ status: 'loading' });
 
-    loadBears(controller.signal)
-      .then((bears) => {
+    loadBear(this.id(), controller.signal)
+      .then((bear) => {
         if (controller.signal.aborted) return;
-        const bear = bears.find((candidate) => candidate.name === this.name());
         this.state.set(
-          bear === undefined
-            ? { status: 'not-found' }
-            : { status: 'found', bear }
+          bear === null ? { status: 'not-found' } : { status: 'found', bear }
         );
       })
       .catch((error: unknown) => {
