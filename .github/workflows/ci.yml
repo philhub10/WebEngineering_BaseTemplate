@@ -14,7 +14,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -26,11 +26,42 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Type-check and build
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
         run: npm run build
 
-      - name: Upload build artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist
+          path: |
+            apps/web/dist
+            apps/api/dist
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install podman-compose
+        run: pipx install podman-compose
+
+      - name: Build and start services
+        run: podman-compose up --build -d
+
+      - name: Check API health
+        run: curl --fail --include --retry 10 --retry-delay 3 --retry-all-errors localhost:3000/health
+
+      - name: Check web app
+        run: curl --fail --silent --retry 10 --retry-delay 3 --retry-all-errors localhost:8080 | grep -q '<app-root>'
+
+      - name: Show logs on failure
+        if: failure()
+        run: podman-compose logs
+
+      - name: Stop services
+        if: always()
+        run: podman-compose down

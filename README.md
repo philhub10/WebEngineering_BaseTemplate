@@ -396,6 +396,16 @@ Turn the repository into an npm workspace with `apps/web` (the existing React ap
 
 **Theory question:** Explain Node's event loop on the server: why does one slow synchronous operation delay every concurrent request, and how does async I/O avoid that? What is a health endpoint for, and who calls it?
 
+> **Answer:**
+>
+> Node runs all JavaScript on a single thread. The **event loop** takes the next ready callback (an incoming request or a finished DB query) and runs it to completion on that thread. Only when the call stack is empty again the next callback can run.
+>
+> That is why one slow **synchronous** operation delays *every* concurrent request: while it runs, the event loop is blocked, so no other request handler, timer or I/O callback can run.
+>
+> **Async I/O** avoids that by not waiting on the JS thread. A fetch, a socket read or a DB query is handed to the operating system (or libuv's thread pool); the handler awaits, which returns control to the event loop right away, and other requests are served in the meantime. When the I/O is done, its callback is queued and the handler continues.
+>
+> A **health endpoint** is a URL that reports whether the process is alive and able to serve requests. It is mostly called by machines, not users: container engines like Podman/Docker (a compose healthcheck, so dependent services only start once it is healthy), Kubernetes liveness/readiness probes and CI/deploy scripts checking that a new release came up.
+
 #### Task 2: Move the Wikipedia call behind a BFF
 
 Implement `GET /api/bears` and `GET /api/bears/:id`. The API fetches the "List of ursids" page server-side (with a descriptive `User-Agent`, as Wikimedia's policy requires), parses it and returns a normalised, typed `Bear` (`id` as a stable slug of the binomial name, `name`, `binomial`, `imageUrl`, `range`), validated with zod before it leaves the server. Use a timeout for the upstream call; if Wikipedia fails or returns something unexpected, respond with 502 or 504, never with an empty list. Switch the frontend to the BFF: the browser no longer talks to Wikipedia.
