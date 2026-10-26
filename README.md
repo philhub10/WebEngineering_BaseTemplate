@@ -433,7 +433,54 @@ Design and implement a comments resource with `GET /api/bears/:id/comments`, `PO
 
 **Done:** comments created in the UI survive a page reload but not an API restart (you can explain why; Playground 5 fixes it); `curl` demonstrates 201, 204, 400 and 404.
 
+**curl demo** (API running on `localhost:3000`, e.g. via `npm run dev`):
+
+201 Created with `Location` header:
+```bash
+curl -i -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -d '{"author":"Lena","text":"Saw one in Slovenia"}'
+```
+
+200 OK, list the comments of a bear:
+```bash
+curl -i localhost:3000/api/bears/ursus-arctos/comments
+```
+
+204 No Content (creates a comment, then deletes it):
+```bash
+ID=$(curl -s -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -d '{"author":"Lena","text":"to be deleted"}' | sed -E 's/.*"id":"([^"]+)".*/\1/'); curl -i -X DELETE localhost:3000/api/comments/$ID
+```
+
+400 Bad Request, empty text:
+```bash
+curl -i -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -d '{"author":"Lena","text":"   "}'
+```
+
+400 Bad Request, comment id is not a UUID:
+```bash
+curl -i -X DELETE localhost:3000/api/comments/42
+```
+
+404 Not Found, unknown bear:
+```bash
+curl -i localhost:3000/api/bears/teddy-bear/comments
+```
+
+404 Not Found, unknown comment:
+```bash
+curl -i -X DELETE localhost:3000/api/comments/00000000-0000-4000-8000-000000000000
+```
+
 **Theory question:** Explain safe, idempotent and cacheable methods. Why is POST used for creating and why must DELETE be idempotent? What happens when a client retries a POST after a timeout, and what does that mean for the API?
+
+> **Answer:**
+>
+> * **Safe:** the request does not change server state (`GET`, `HEAD`, `OPTIONS`).
+> * **Idempotent:** sending the request several times has the same effect on the server as sending it once (all safe methods, plus `PUT` and `DELETE`).
+> * **Cacheable:** the response may be stored and reused (mainly `GET` and `HEAD`).
+>
+> **POST** is not idempotent: every call creates a new resource whose id the server chooses, so it answers `201 Created` with a `Location` header. **DELETE** must be idempotent so that clients and proxies can safely retry it: after the first call the comment is gone, and repeating the call changes nothing more (it may answer 404 instead of 204, but the server state is the same).
+>
+> **Retrying a POST after a timeout:** the client cannot know whether the first request was processed, so a retry may create a **duplicate** comment. An API that must prevent this accepts an `Idempotency-Key` header: the server stores the key with the result and returns the stored result for a repeated key instead of creating the resource again. This API does not do that yet, so duplicates are possible.
 
 #### Task 4: One error format for everything
 

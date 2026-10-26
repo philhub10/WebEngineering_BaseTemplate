@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-
-export interface Comment {
-  id: string;
-  name: string;
-  text: string;
-}
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  output,
+} from '@angular/core';
+import type { Comment } from '../../comments';
 
 @Component({
   selector: 'app-comment-list',
@@ -13,4 +13,6 @@ export interface Comment {
 })
 export class CommentList {
   readonly comments = input.required<Comment[]>();
+  // Emits the id of the comment whose delete button was clicked.
+  readonly deleted = output<string>();
 }

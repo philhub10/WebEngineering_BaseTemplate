@@ -4,11 +4,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-
-export interface NewComment {
-  name: string;
-  text: string;
-}
+import type { NewComment } from '../../comments';
 
 @Component({
   selector: 'app-comment-form',
@@ -35,7 +31,7 @@ export class CommentForm {
 
   protected onSubmit(event: SubmitEvent): void {
     event.preventDefault();
-    this.submitted.emit({ name: this.name(), text: this.text() });
+    this.submitted.emit({ author: this.name(), text: this.text() });
     this.name.set('');
     this.text.set('');
   }

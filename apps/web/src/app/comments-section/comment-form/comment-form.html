@@ -8,6 +8,7 @@
       id="name"
       placeholder="Enter your name"
       required
+      maxlength="80"
       [value]="name()"
       (input)="onNameInput($event)"
     />
@@ -20,6 +21,7 @@
       id="comment"
       placeholder="Enter your comment"
       required
+      maxlength="2000"
       [value]="text()"
       (input)="onTextInput($event)"
     />

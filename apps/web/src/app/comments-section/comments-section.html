@@ -8,7 +8,13 @@
     class="comment-wrapper"
     [style.display]="commentsExpanded() ? 'block' : 'none'"
   >
+    @if (errorMessage(); as message) {
+      <p class="error-message">{{ message }}</p>
+    }
     <app-comment-form (submitted)="onAddComment($event)" />
-    <app-comment-list [comments]="comments()" />
+    <app-comment-list
+      [comments]="comments()"
+      (deleted)="onDeleteComment($event)"
+    />
   </div>
 </section>

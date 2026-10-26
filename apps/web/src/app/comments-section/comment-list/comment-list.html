@@ -2,8 +2,9 @@
 <ul class="comment-container">
   @for (comment of comments(); track comment.id) {
     <li>
-      <p>{{ comment.name }}</p>
+      <p>{{ comment.author }}</p>
       <p>{{ comment.text }}</p>
+      <button type="button" (click)="deleted.emit(comment.id)">Delete</button>
     </li>
   }
 </ul>

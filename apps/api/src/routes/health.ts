@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
 import type { FastifyPluginCallback } from 'fastify';
+import type { ZodTypeProvider } from '@fastify/type-provider-zod';
+import { z } from 'zod';
 
-export interface Health {
-  status: 'ok';
-  version: string;
-  uptime: number;
-}
+const Health = z.object({
+  status: z.literal('ok'),
+  version: z.string(),
+  uptime: z.number(),
+});
 
 function readVersion(): string {
   const parsed: unknown = JSON.parse(
@@ -25,26 +27,14 @@ function readVersion(): string {
 const version = readVersion();
 
 export const healthRoutes: FastifyPluginCallback = (app, _options, done) => {
-  app.get<{ Reply: Health }>(
-    '/health',
-    {
-      schema: {
-        response: {
-          '2xx': {
-            type: 'object',
-            required: ['status', 'version', 'uptime'],
-            properties: {
-              status: { type: 'string', enum: ['ok'] },
-              version: { type: 'string' },
-              uptime: { type: 'number' },
-            },
-          },
-        },
-      },
-    },
-    (_request, reply) => {
-      void reply.send({ status: 'ok', version, uptime: process.uptime() });
-    }
-  );
+  app
+    .withTypeProvider<ZodTypeProvider>()
+    .get(
+      '/health',
+      { schema: { response: { '2xx': Health } } },
+      (_request, reply) => {
+        void reply.send({ status: 'ok', version, uptime: process.uptime() });
+      }
+    );
   done();
 };

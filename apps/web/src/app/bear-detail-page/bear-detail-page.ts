@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { CommentsSection } from '../comments-section/comments-section';
 import type { Bear } from '../bears';
 import { loadBear } from '../bears';
 
@@ -19,7 +20,7 @@ type DetailState =
 @Component({
   selector: 'app-bear-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, CommentsSection],
   templateUrl: './bear-detail-page.html',
 })
 export class BearDetailPage implements OnInit, OnDestroy {

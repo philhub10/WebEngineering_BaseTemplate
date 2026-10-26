@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UpstreamError } from '../errors.js';
+import { NotFoundError, UpstreamError } from '../errors.js';
 import { Bear } from '../schemas/bear.js';
 import type { Env } from '../schemas/env.js';
 import { fetchImageUrls, fetchUrsidsWikitext } from './wikipedia.js';
@@ -97,4 +97,14 @@ export async function loadBears(config: Env): Promise<Bear[]> {
     });
   }
   return result.data;
+}
+
+// Returns one bear, or throws a NotFoundError (404) if the id is unknown.
+export async function loadBear(config: Env, id: string): Promise<Bear> {
+  const bears = await loadBears(config);
+  const bear = bears.find((candidate) => candidate.id === id);
+  if (bear === undefined) {
+    throw new NotFoundError(`No bear with id "${id}"`);
+  }
+  return bear;
 }

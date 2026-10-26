@@ -18,6 +18,8 @@
       />
       <p><b>Scientific name:</b> {{ bear.binomial }}</p>
       <p><b>Range:</b> {{ bear.range }}</p>
+
+      <app-comments-section [bearId]="bear.id" />
     }
   </article>
 </main>

@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
+// e.g. "ursus-arctos": lowercase words joined by hyphens
+export const BearId = z.string().regex(/^[a-z]+(?:-[a-z]+)*$/v);
+
 export const Bear = z.object({
-  id: z.string().nonempty(), // e.g. "ursus-arctos"
+  id: BearId,
   name: z.string().nonempty(), // e.g. "Brown bear"
   binomial: z.string().nonempty(), // e.g. "Ursus arctos"
   imageUrl: z.url().nullable(), // null if Wikipedia has no image
