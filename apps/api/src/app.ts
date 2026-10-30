@@ -8,6 +8,8 @@ import {
 } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { configPlugin } from './plugins/config.js';
+import { corsPlugin } from './plugins/cors.js';
+import { swaggerPlugin } from './plugins/swagger.js';
 import { PROBLEM_CONTENT_TYPE, problem, toProblem } from './problem.js';
 import { bearRoutes } from './routes/bears.js';
 import { commentRoutes } from './routes/comments.js';
@@ -57,6 +59,8 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
   });
 
   void app.register(configPlugin);
+  void app.register(corsPlugin);
+  void app.register(swaggerPlugin);
   void app.register(healthRoutes);
   void app.register(bearRoutes);
   void app.register(commentRoutes);

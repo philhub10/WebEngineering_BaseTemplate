@@ -537,7 +537,48 @@ In development Vite proxies `/api`, so the browser sees one origin. Now serve th
 
 **Done:** the preflight (OPTIONS) and the successful cross-origin request are visible in DevTools; `/api/docs` lists every route including the Problem Details schema.
 
+**Cross-origin setup:** the web app is Angular, not Vite, so instead of `vite preview` there is a `cross-origin` Angular configuration. It serves the app on port 4173 and, via `define` in `angular.json`, sets `API_BASE_URL` to `http://localhost:3000`, so the browser calls the API directly instead of through the proxy. The default builds keep `API_BASE_URL` empty (same origin, behind the dev proxy or nginx).
+
+The API only accepts the origins listed in `CORS_ORIGINS` (comma-separated). The web app always runs on `http://localhost:4173`; the demo only changes the API's allow-list. Keep the browser's DevTools open on the Network tab (and the Console) the whole time.
+
+**Step 1: the origin is not allowed, so the bears fail to load**
+```bash
+CORS_ORIGINS=http://localhost:9999 npm run dev:api   # API on :3000, only allows :9999
+npm run preview:cross-origin -w apps/web             # web app on http://localhost:4173
+```
+http://localhost:4173. `GET /api/bears` shows a CORS error, the Console says *"blocked by CORS policy: No 'Access-Control-Allow-Origin' header"*, and the bear list shows its error state. There is no preflight, because a `GET` is a simple request.
+
+**Step 2: allow the origin, everything works**
+
+Stop the API and start it with the correct origin:
+```bash
+CORS_ORIGINS=http://localhost:4173 npm run dev:api
+```
+Reload http://localhost:4173. The bears load. Click a bear card to open its detail page (e.g. `/bears/ursus-arctos`), then click "Show comments".
+* Adding a comment ("Submit comment"): an `OPTIONS /api/bears/<id>/comments` preflight (because of `content-type: application/json`) answered with 204.
+* Deleting a comment ("Delete"): an `OPTIONS /api/comments/<id>` preflight, followed by the `DELETE` (204).
+
+**Step 3: the preflight fails, the comment is not created**
+
+Leave the detail page open in the browser (its data is already loaded). Stop the API and start it again with the wrong origin:
+```bash
+CORS_ORIGINS=http://localhost:9999 npm run dev:api
+```
+Add a comment. The `OPTIONS` preflight comes back without `Access-Control-Allow-Origin`, so the browser marks it as a CORS error and **never sends the `POST`**: the request does not reach the API.
+
+**API docs:** the OpenAPI 3.1 document is generated from the zod route schemas: the UI is at http://localhost:3000/api/docs.
+
 **Theory question:** Who enforces CORS, the browser or the server? What is the difference between a simple and a preflighted request? Why can `Access-Control-Allow-Origin: *` not be combined with credentials, and why does a BFF make most CORS problems disappear?
+
+> **Answer:**
+>
+> **Who enforces CORS:** the **browser**. The server only *declares* with `Access-Control-Allow-*` headers which origins may read its responses; the browser checks these headers and blocks the page's JavaScript if they do not match. Without a browser there is no CORS: `curl` or another server can call the API with any `Origin` header, and the request is executed. So CORS is not access control for the API.
+>
+> **Simple vs. preflighted request:** a *simple* request uses `GET`, `HEAD` or `POST`, only CORS-safelisted headers, and a `Content-Type` of `text/plain`, `multipart/form-data` or `application/x-www-form-urlencoded`. The browser sends it directly and only checks the response headers. Everything else (`DELETE`, `PUT`, a `POST` with `content-type: application/json` or custom headers) is *preflighted*.
+>
+> **`*` with credentials:** with credentials (cookies, HTTP auth) the response may contain data of the logged-in user. If `*` were allowed together with credentials, *any* website could make requests in the user's name and read the private answers. Therefore it is forbidden: with `Access-Control-Allow-Credentials: true` the server must name the exact origin.
+>
+> **Why a BFF makes most CORS problems disappear:** the browser loads the web app and calls `/api` from the **same origin** (dev proxy, nginx), so there is no cross-origin request and no CORS. The BFF calls Wikipedia server-to-server, where CORS does not apply. CORS only becomes relevant again when the frontend and API are served from different origins.
 
 ## 5. Persistence and Data Modelling
 

@@ -20,6 +20,11 @@ export const Env = z.object({
       'BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)'
     ),
   ENABLE_DEBUG_ROUTES: z.stringbool().default(true),
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:4173')
+    .transform((value) => value.split(',').map((origin) => origin.trim()))
+    .pipe(z.array(z.url())),
 });
 
 export type Env = z.infer<typeof Env>;

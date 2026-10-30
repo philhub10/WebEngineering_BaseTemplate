@@ -1,3 +1,4 @@
+import { apiUrl } from './api';
 import { toApiError } from './problem';
 
 export interface Bear {
@@ -32,7 +33,7 @@ function toBear(bear: BearResponse): Bear {
 // Pass an AbortSignal so a caller that no longer needs the result (the
 // component was destroyed) can cancel the request.
 export async function loadBears(signal?: AbortSignal): Promise<Bear[]> {
-  const res = await fetch('/api/bears', { signal });
+  const res = await fetch(apiUrl('/api/bears'), { signal });
   if (!res.ok) {
     throw await toApiError(res);
   }
@@ -47,7 +48,9 @@ export async function loadBear(
   id: string,
   signal?: AbortSignal
 ): Promise<Bear | null> {
-  const res = await fetch(`/api/bears/${encodeURIComponent(id)}`, { signal });
+  const res = await fetch(apiUrl(`/api/bears/${encodeURIComponent(id)}`), {
+    signal,
+  });
   if (res.status === NOT_FOUND) {
     return null;
   }

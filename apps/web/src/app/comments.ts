@@ -1,3 +1,4 @@
+import { apiUrl } from './api';
 import { toApiError } from './problem';
 
 export interface Comment {
@@ -18,9 +19,12 @@ export async function loadComments(
   bearId: string,
   signal?: AbortSignal
 ): Promise<Comment[]> {
-  const res = await fetch(`/api/bears/${encodeURIComponent(bearId)}/comments`, {
-    signal,
-  });
+  const res = await fetch(
+    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`),
+    {
+      signal,
+    }
+  );
   if (!res.ok) {
     throw await toApiError(res);
   }
@@ -32,11 +36,14 @@ export async function createComment(
   bearId: string,
   newComment: NewComment
 ): Promise<Comment> {
-  const res = await fetch(`/api/bears/${encodeURIComponent(bearId)}/comments`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(newComment),
-  });
+  const res = await fetch(
+    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`),
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(newComment),
+    }
+  );
   if (!res.ok) {
     throw await toApiError(res);
   }
@@ -45,7 +52,7 @@ export async function createComment(
 }
 
 export async function deleteComment(id: string): Promise<void> {
-  const res = await fetch(`/api/comments/${encodeURIComponent(id)}`, {
+  const res = await fetch(apiUrl(`/api/comments/${encodeURIComponent(id)}`), {
     method: 'DELETE',
   });
   if (!res.ok) {

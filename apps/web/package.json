@@ -8,6 +8,7 @@
     "dev": "ng serve",
     "build": "ng build",
     "preview": "ng serve --configuration production",
+    "preview:cross-origin": "ng serve --configuration cross-origin",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "typecheck": "tsc -p tsconfig.app.json --noEmit"

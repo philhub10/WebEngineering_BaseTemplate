@@ -31,7 +31,10 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.css"]
+            "styles": ["src/styles.css"],
+            "define": {
+              "API_BASE_URL": "''"
+            }
           },
           "configurations": {
             "production": {
@@ -53,6 +56,24 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "cross-origin": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all",
+              "define": {
+                "API_BASE_URL": "'http://localhost:3000'"
+              }
             }
           },
           "defaultConfiguration": "production"
@@ -68,6 +89,10 @@
             },
             "development": {
               "buildTarget": "wildlife-app:build:development"
+            },
+            "cross-origin": {
+              "buildTarget": "wildlife-app:build:cross-origin",
+              "port": 4173
             }
           },
           "defaultConfiguration": "development"

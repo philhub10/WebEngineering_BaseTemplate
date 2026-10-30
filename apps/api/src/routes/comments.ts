@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { BearId } from '../schemas/bear.js';
 import { Comment, NewComment } from '../schemas/comment.js';
+import { problemResponses } from '../schemas/problem.js';
 import { loadBear } from '../services/bears.js';
 import {
   createComment,
@@ -22,7 +23,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
     {
       schema: {
         params: z.object({ id: BearId }),
-        response: { [OK]: z.array(Comment) },
+        response: { [OK]: z.array(Comment), ...problemResponses },
       },
     },
     async (request) => {
@@ -37,7 +38,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       schema: {
         params: z.object({ id: BearId }),
         body: NewComment,
-        response: { [CREATED]: Comment },
+        response: { [CREATED]: Comment, ...problemResponses },
       },
     },
     async (request, reply) => {
@@ -55,11 +56,15 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
     {
       schema: {
         params: z.object({ commentId: z.uuid('must be a UUID') }),
+        response: {
+          [NO_CONTENT]: z.null().describe('Comment deleted'),
+          ...problemResponses,
+        },
       },
     },
     async (request, reply) => {
       deleteComment(request.params.commentId);
-      return await reply.code(NO_CONTENT).send();
+      return await reply.code(NO_CONTENT).send(null);
     }
   );
 

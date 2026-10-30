@@ -2,21 +2,12 @@ import { STATUS_CODES } from 'node:http';
 import type { FastifyRequest } from 'fastify';
 import { hasZodFastifySchemaValidationErrors } from '@fastify/type-provider-zod';
 import { AppError, PROBLEM_BASE } from './errors.js';
+import type { Problem } from './schemas/problem.js';
 
 const BAD_REQUEST = 400;
 const INTERNAL_SERVER_ERROR = 500;
 
 export const PROBLEM_CONTENT_TYPE = 'application/problem+json; charset=utf-8';
-
-// RFC 9457 Problem Details, plus the `errors` extension for validation.
-export interface Problem {
-  type: string;
-  title: string;
-  status: number;
-  detail: string;
-  instance: string;
-  errors?: Array<{ path: string; message: string }>;
-}
 
 // The request id is a UUID (see genReqId in app.ts), so it fits a urn:uuid.
 function instanceOf(request: FastifyRequest): string {
