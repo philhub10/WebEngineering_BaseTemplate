@@ -488,7 +488,48 @@ Introduce typed error classes and a central Fastify error handler that renders e
 
 **Done:** `curl -i` shows `application/problem+json` and a request id for a 400, a 404, a 502 and a provoked 500; the request id is found in the API log.
 
+**curl demo** (API running on `localhost:3000`, e.g. via `npm run dev`). Every response has `content-type: application/problem+json` and an `x-request-id` header whose value is repeated in the problem's `instance`.
+
+400 Bad Request, validation error with an `errors` array (also sends its own request id, which the API reuses):
+```bash
+curl -i -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -H 'x-request-id: 6f2b0c1e-8d1a-4f43-9ae8-2f1d2a9b7c55' -d '{"author":"","text":"   "}'
+```
+
+404 Not Found, unknown bear:
+```bash
+curl -i localhost:3000/api/bears/teddy-bear
+```
+
+404 Not Found, unknown route:
+```bash
+curl -i localhost:3000/api/nope
+```
+
+502 Bad Gateway, upstream unreachable (start the API with a wrong Wikipedia hostname first):
+```bash
+WIKIPEDIA_BASE_URL=https://no-such-host.invalid npm run dev:api
+curl -i localhost:3000/api/bears
+```
+
+500 Internal Server Error, provoked through the debug route (only registered when `ENABLE_DEBUG_ROUTES` is true). The response has a generic `detail`; the real message with internals only appears in the log:
+```bash
+curl -i localhost:3000/api/debug/error
+```
+
+Find the request id in the API log (the terminal running `npm run dev`): every log line of that request carries it as `reqId`, e.g.
+```json
+{"level":50,"reqId":"bfc46e56-a52e-4d08-aa45-b02fa173b969","err":{"type":"Error","message":"Simulated failure: ..."},"msg":"request failed"}
+```
+
 **Theory question:** Why should an API have exactly one error contract? Which information must never leave the server in an error, and how do request ids connect a user's complaint to a log line?
+
+> **Answer:**
+>
+> **One error contract:** if every error has the same shape (RFC 9457 Problem Details, `application/problem+json`), a client needs exactly one code path to handle failures: check the `status` and `type`, show `detail`, and for validation errors highlight the fields from `errors`. With mixed formats every client has to guess the format per endpoint and breaks as soon as one changes. One contract can also be documented once in the OpenAPI document and handled in one place on the server (the central error handler), so no route can forget it.
+>
+> **What must never leave the server:** stack traces, SQL statements and database errors, file paths, internal hostnames, IPs and ports, upstream URLs and their raw responses, configuration values, secrets and tokens. For 4xx errors `detail` tells the client what to change; for 5xx errors `detail` stays generic and everything else goes to the log only.
+>
+> **Request ids:** each request gets an id (taken from an incoming `x-request-id` or generated as a UUID). The same id is sent back in the `x-request-id` header, in the problem's `instance` (`urn:uuid:<id>`) and in every log line of that request (`reqId`). The frontend shows it for server errors ("Reference: ..."), so a user can report it. The support then searches the logs for that id and finds the exact request with the full error and stack trace.
 
 #### Task 5: CORS and the API contract
 

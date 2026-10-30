@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 // e.g. "ursus-arctos": lowercase words joined by hyphens
-export const BearId = z.string().regex(/^[a-z]+(?:-[a-z]+)*$/v);
+export const BearId = z
+  .string()
+  .regex(/^[a-z]+(?:-[a-z]+)*$/v, 'must be lowercase words joined by hyphens');
 
 export const Bear = z.object({
   id: BearId,

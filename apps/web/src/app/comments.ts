@@ -1,3 +1,5 @@
+import { toApiError } from './problem';
+
 export interface Comment {
   id: string;
   bearId: string;
@@ -20,7 +22,7 @@ export async function loadComments(
     signal,
   });
   if (!res.ok) {
-    throw new Error(`Loading comments responded with status ${res.status}`);
+    throw await toApiError(res);
   }
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- the API validated the data with zod.
   return (await res.json()) as Comment[];
@@ -36,7 +38,7 @@ export async function createComment(
     body: JSON.stringify(newComment),
   });
   if (!res.ok) {
-    throw new Error(`Creating a comment responded with status ${res.status}`);
+    throw await toApiError(res);
   }
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- the API validated the data with zod.
   return (await res.json()) as Comment;
@@ -47,6 +49,6 @@ export async function deleteComment(id: string): Promise<void> {
     method: 'DELETE',
   });
   if (!res.ok) {
-    throw new Error(`Deleting a comment responded with status ${res.status}`);
+    throw await toApiError(res);
   }
 }

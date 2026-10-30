@@ -10,6 +10,11 @@ import { RouterLink } from '@angular/router';
 import { CommentsSection } from '../comments-section/comments-section';
 import type { Bear } from '../bears';
 import { loadBear } from '../bears';
+import { errorMessage } from '../problem';
+
+// Shown if the error is not a problem from our API (e.g. network down).
+const BEAR_ERROR_FALLBACK =
+  'Sorry, the bear data could not be loaded right now. Please try again later.';
 
 type DetailState =
   | { status: 'loading' }
@@ -71,14 +76,13 @@ export class BearDetailPage implements OnInit, OnDestroy {
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        // The user only sees a generic error message, so log the real cause
+        // The user only sees the problem's detail, so log the full error
         // here for debugging.
         // eslint-disable-next-line no-console -- see comment above
         console.error('Failed to load bear data:', error);
         this.state.set({
           status: 'error',
-          message:
-            'Sorry, the bear data could not be loaded right now. Please try again later.',
+          message: errorMessage(error, BEAR_ERROR_FALLBACK),
         });
       });
   }

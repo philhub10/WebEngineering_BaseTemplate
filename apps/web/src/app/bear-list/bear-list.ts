@@ -7,7 +7,12 @@ import {
 } from '@angular/core';
 import type { Bear } from '../bears';
 import { loadBears } from '../bears';
+import { errorMessage } from '../problem';
 import { BearCard } from './bear-card/bear-card';
+
+// Shown if the error is not a problem from our API (e.g. network down).
+const BEARS_ERROR_FALLBACK =
+  'Sorry, the bear data could not be loaded right now. Please try again later.';
 
 type BearsState =
   | { status: 'loading' }
@@ -69,14 +74,13 @@ export class BearList implements OnInit, OnDestroy {
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        // The user only sees a generic error message, so log the real cause
+        // The user only sees the problem's detail, so log the full error
         // here for debugging.
         // eslint-disable-next-line no-console -- see comment above
         console.error('Failed to load bear data:', error);
         this.state.set({
           status: 'error',
-          message:
-            'Sorry, the bear data could not be loaded right now. Please try again later.',
+          message: errorMessage(error, BEARS_ERROR_FALLBACK),
         });
       });
   }

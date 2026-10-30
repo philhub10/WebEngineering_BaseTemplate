@@ -19,6 +19,7 @@ export const Env = z.object({
     .default(
       'BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)'
     ),
+  ENABLE_DEBUG_ROUTES: z.stringbool().default(true),
 });
 
 export type Env = z.infer<typeof Env>;

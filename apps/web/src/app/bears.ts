@@ -1,3 +1,5 @@
+import { toApiError } from './problem';
+
 export interface Bear {
   id: string;
   name: string;
@@ -32,7 +34,7 @@ function toBear(bear: BearResponse): Bear {
 export async function loadBears(signal?: AbortSignal): Promise<Bear[]> {
   const res = await fetch('/api/bears', { signal });
   if (!res.ok) {
-    throw new Error(`GET /api/bears responded with status ${res.status}`);
+    throw await toApiError(res);
   }
   // Our own API validated the data with zod before sending it.
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above
@@ -50,7 +52,7 @@ export async function loadBear(
     return null;
   }
   if (!res.ok) {
-    throw new Error(`GET /api/bears/${id} responded with status ${res.status}`);
+    throw await toApiError(res);
   }
   // Same reasoning as in loadBears.
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- see comment above

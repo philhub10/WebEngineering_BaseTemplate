@@ -54,7 +54,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
     '/api/comments/:commentId',
     {
       schema: {
-        params: z.object({ commentId: z.uuid() }),
+        params: z.object({ commentId: z.uuid('must be a UUID') }),
       },
     },
     async (request, reply) => {

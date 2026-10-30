@@ -10,6 +10,7 @@ import { CommentForm } from './comment-form/comment-form';
 import { CommentList } from './comment-list/comment-list';
 import type { Comment, NewComment } from '../comments';
 import { createComment, deleteComment, loadComments } from '../comments';
+import { errorMessage } from '../problem';
 
 @Component({
   selector: 'app-comments-section',
@@ -71,11 +72,13 @@ export class CommentsSection implements OnInit, OnDestroy {
       });
   }
 
+  // Shows the problem's detail, e.g. "Your comment could not be saved:
+  // text must not be empty". `message` says which action failed.
   private showError(message: string, error: unknown): void {
-    // The user only sees a generic error message, so log the real cause
-    // here for debugging.
-    // eslint-disable-next-line no-console -- see comment above
+    // eslint-disable-next-line no-console -- the full error helps debugging
     console.error(message, error);
-    this.errorMessage.set(`${message} Please try again later.`);
+    this.errorMessage.set(
+      `${message} ${errorMessage(error, 'Please try again later.')}`
+    );
   }
 }

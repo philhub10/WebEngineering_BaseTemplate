@@ -6,6 +6,7 @@ services:
       WIKIPEDIA_BASE_URL: https://en.wikipedia.org
       USER_AGENT: BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)
       CORS_ORIGINS: http://localhost:4173
+      ENABLE_DEBUG_ROUTES: "false"
     ports: ["3000:3000"]
   web:
     build: ./apps/web
