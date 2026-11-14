@@ -1,14 +1,36 @@
 services:
+  db:
+    image: docker.io/library/postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bears}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bears}
+      POSTGRES_DB: ${POSTGRES_DB:-bears}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
   api:
     build: ./apps/api
     environment:
       PORT: "3000"
+      DATABASE_URL: postgres://${POSTGRES_USER:-bears}:${POSTGRES_PASSWORD:-bears}@db:5432/${POSTGRES_DB:-bears}
       WIKIPEDIA_BASE_URL: https://en.wikipedia.org
       USER_AGENT: BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)
       CORS_ORIGINS: http://localhost:4173
       ENABLE_DEBUG_ROUTES: "false"
     ports: ["3000:3000"]
+    depends_on:
+      db:
+        condition: service_healthy
   web:
     build: ./apps/web
     ports: ["8080:80"]
     depends_on: [api]
+
+volumes:
+  pgdata:

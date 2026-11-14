@@ -31,3 +31,12 @@ export class UpstreamTimeoutError extends AppError {
   override readonly publicDetail =
     'The bear data source did not answer in time. Please try again later.';
 }
+
+export class ServiceUnavailableError extends AppError {
+  override name = 'ServiceUnavailableError';
+  readonly status = 503;
+  readonly type = `${PROBLEM_BASE}/not-ready`;
+  readonly title = 'Service not ready';
+  override readonly publicDetail =
+    'The service cannot reach its database right now.';
+}

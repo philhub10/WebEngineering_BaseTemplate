@@ -592,7 +592,57 @@ Add a `db` service (PostgreSQL, current major version) to `compose.yaml` with a 
 
 **Done:** on a clean clone `docker compose up --build` starts db and api; `/health/ready` returns a 503 Problem while the database is stopped and 200 once it is back.
 
+**Demo**:
+```bash
+podman compose up --build  
+```
+200, liveness, never touches the database:
+```bash
+curl -i localhost:3000/health
+```
+
+200 `{"status":"ready"}`:
+```bash
+curl -i localhost:3000/health/ready
+```
+
+Stop the database:
+```bash
+podman compose stop db
+```
+
+503 `application/problem+json`, the cause only appears in the log:
+```bash
+curl -i localhost:3000/health/ready
+```
+
+Still 200, the process itself is fine:
+```bash
+curl -i localhost:3000/health
+```
+
+Start the database again:
+```bash
+podman compose start db
+```
+
+200 again, no API restart needed:
+```bash
+curl -i localhost:3000/health/ready
+```
+
 **Theory question:** Liveness versus readiness: who uses each, and what goes wrong if the readiness check includes too many dependencies? Why is a connection pool necessary, and what limits its size?
+
+> **Answer:**
+>
+> * **Liveness** (`/health`): "Is the process alive?" Called by the container engine or Kubernetes. If it fails, the container is **restarted**. That's why it must not check the database: a database outage would otherwise restart every API instance.
+> * **Readiness** (`/health/ready`): "Can this instance serve requests now?" Called by the load balancer or Kubernetes. If it fails, the instance only gets **no traffic** until it is ready again. Nothing is restarted.
+>
+> **Too many dependencies:** if readiness also checked Wikipedia or other optional services, one of them going down would mark *all* instances as not ready. The whole API would be offline, even for requests that would have worked without that service.
+>
+> **Why a pool:** opening a database connection is slow (network handshake, login, and PostgreSQL starts a new process per connection). A pool keeps a few connections open and reuses them. If all are busy, a request waits briefly.
+>
+> **What limits its size:** the database. PostgreSQL allows only `max_connections` (default 100) in total, shared by all API instances, workers and tools. Every connection costs memory on the server.
 
 #### Task 2: Model bears and comments and write the first migration
 

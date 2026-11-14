@@ -55,6 +55,9 @@ jobs:
       - name: Check API health
         run: curl --fail --include --retry 10 --retry-delay 3 --retry-all-errors localhost:3000/health
 
+      - name: Check API readiness (database reachable)
+        run: curl --fail --include --retry 10 --retry-delay 3 --retry-all-errors localhost:3000/health/ready
+
       - name: Check web app
         run: curl --fail --silent --retry 10 --retry-delay 3 --retry-all-errors localhost:8080 | grep -q '<app-root>'
 
