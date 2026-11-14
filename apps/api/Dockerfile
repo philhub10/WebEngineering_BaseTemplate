@@ -11,6 +11,8 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
+COPY drizzle ./drizzle
 USER node
 EXPOSE 3000
-CMD ["node", "dist/server.js"]
+# Applies pending migrations and upserts the bears, then starts the API.
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/db/seed.js && exec node dist/server.js"]

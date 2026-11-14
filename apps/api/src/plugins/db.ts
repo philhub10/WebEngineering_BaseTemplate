@@ -1,29 +1,26 @@
 import fp from 'fastify-plugin';
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { FastifyPluginAsync } from 'fastify';
+import { createDb, createPool } from '../db/client.js';
+import type { Db } from '../db/client.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     pool: Pool;
+    db: Db;
   }
 }
 
-const IDLE_TIMEOUT_MS = 10_000;
-
 // eslint-disable-next-line @typescript-eslint/require-await -- async so Fastify awaits the plugin and runs onClose
 const db: FastifyPluginAsync = async (app) => {
-  const pool = new Pool({
-    connectionString: app.config.DATABASE_URL,
-    max: app.config.DB_POOL_MAX,
-    idleTimeoutMillis: IDLE_TIMEOUT_MS,
-    connectionTimeoutMillis: app.config.DB_CONNECTION_TIMEOUT_MS,
-  });
+  const pool = createPool(app.config);
 
   pool.on('error', (err) => {
     app.log.warn({ err }, 'idle database client failed');
   });
 
   app.decorate('pool', pool);
+  app.decorate('db', createDb(pool));
   app.addHook('onClose', async () => {
     await pool.end();
   });

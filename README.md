@@ -652,6 +652,18 @@ Define the schema in Drizzle: `bears` (id = slug as primary key, name, binomial,
 
 **Theory question:** Why migrations instead of creating tables from code at startup? What does forward-only mean, and what goes wrong when two branches both create migration 0003? Natural key (slug) versus surrogate key (uuid): when is which appropriate?
 
+> **Answer:**
+>
+> **Why migrations:** `CREATE TABLE IF NOT EXISTS` at startup only creates tables, it never changes them. A new column or index would never reach a database that already exists. Migrations are numbered SQL files in git: every database (laptop, CI, production) runs the same steps in the same order, the SQL can be reviewed in the pull request, and `drizzle.__drizzle_migrations` records which files already ran.
+>
+> **Forward-only:** a migration that already ran somewhere is never edited. A mistake is fixed with a new migration (`0004_fix_...`).
+>
+> **Two branches with 0003:** both branches create a `0003` based on `0002`. On merge, `drizzle/meta/_journal.json` conflicts, and both snapshots claim to follow `0002`, so the next `generate` compares against the wrong state. A database where one branch already ran may silently skip the other `0003`. The fix: rebase, delete your own unapplied migration and generate it again on top of `main`.
+>
+> **Natural vs. surrogate key:**
+> * **Natural key** (e.g. slug `ursus-arctos`): fits when the value is unique, never changes and is known at insert time.
+> * **Surrogate key** (e.g. UUID): fits when there is no such value, as with comments (two comments can have the same text and author). UUIDv7 is time-ordered, so new rows are inserted at the end of the index.
+
 #### Task 3: Introduce a repository layer
 
 Define `BearRepository` and `CommentRepository` as TypeScript interfaces and implement them with Drizzle. Route handlers and services depend on the interfaces only; the implementation is injected (Fastify decorators or plugin options). Keep the in-memory implementation from Playground 4 and use it in your tests. Comments are now persisted.

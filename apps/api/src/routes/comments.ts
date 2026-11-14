@@ -27,7 +27,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request) => {
-      await loadBear(app.config, request.params.id);
+      await loadBear(app.db, request.params.id);
       return listComments(request.params.id);
     }
   );
@@ -42,7 +42,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request, reply) => {
-      await loadBear(app.config, request.params.id);
+      await loadBear(app.db, request.params.id);
       const comment = createComment(request.params.id, request.body);
       return await reply
         .code(CREATED)

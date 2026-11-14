@@ -18,7 +18,7 @@ export const bearRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async () => {
-      return await loadBears(app.config);
+      return await loadBears(app.db);
     }
   );
 
@@ -31,7 +31,7 @@ export const bearRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request) => {
-      return await loadBear(app.config, request.params.id);
+      return await loadBear(app.db, request.params.id);
     }
   );
 
