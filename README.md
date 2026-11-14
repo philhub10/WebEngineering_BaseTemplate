@@ -672,6 +672,22 @@ Define `BearRepository` and `CommentRepository` as TypeScript interfaces and imp
 
 **Theory question:** What does the repository hide, and what does it cost? Explain the N+1 problem using "comments for all bears" and show how your repository avoids it.
 
+> **Answer:**
+>
+> **What it hides:** how and where the data is stored. Routes and services call `repos.comments.create(...)` and get a `Comment` back; they don't know about SQL or Drizzle. That's why switching from Drizzle to e.g. Prisma would only touch `repositories/drizzle/`.
+>
+> **What it costs:**
+> * Every query is written twice: once in the interface and once per implementation (here even three times with the in-memory version).
+> * The in-memory version can hide bugs that only the database has: constraints, sorting or time zones.
+>
+> **N+1 problem:** to show all bears with their comments, a naive code loads the bears (1 query) and then runs one comments query per bear inside a loop (N queries). With 8 bears that's 9 round trips to the database.
+>
+> **How the repository avoids it:** `CommentRepository.listByBears(bearIds)` loads the comments for all bears in **one** query with `WHERE bear_id IN (...)` and groups them in memory by `bear_id`. Together with `bears.list()` that's always 2 queries.
+> ```ts
+> const bears = await repos.bears.list();
+> const comments = await repos.comments.listByBears(bears.map((b) => b.id));
+> ```
+
 #### Task 4: Pagination, filtering and one measured index
 
 Make `GET /api/bears/:id/comments` cursor-paginated (`limit`, `cursor` based on `created_at` and `id`, response contains `nextCursor`) and add `?q=` to `GET /api/bears` to filter by name. Write a script that seeds 100,000 comments, run `EXPLAIN ANALYZE` for the comments query without and with an index on (`bear_id`, `created_at`, `id`), and record both plans and timings in your README.

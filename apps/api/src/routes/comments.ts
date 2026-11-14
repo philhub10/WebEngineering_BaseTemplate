@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { BearId } from '../schemas/bear.js';
 import { Comment, NewComment } from '../schemas/comment.js';
 import { problemResponses } from '../schemas/problem.js';
-import { loadBear } from '../services/bears.js';
 import {
   createComment,
   deleteComment,
@@ -27,8 +26,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request) => {
-      await loadBear(app.db, request.params.id);
-      return listComments(request.params.id);
+      return await listComments(app.repos, request.params.id);
     }
   );
 
@@ -42,8 +40,11 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request, reply) => {
-      await loadBear(app.db, request.params.id);
-      const comment = createComment(request.params.id, request.body);
+      const comment = await createComment(
+        app.repos,
+        request.params.id,
+        request.body
+      );
       return await reply
         .code(CREATED)
         .header('location', `/api/comments/${comment.id}`)
@@ -63,7 +64,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request, reply) => {
-      deleteComment(request.params.commentId);
+      await deleteComment(app.repos, request.params.commentId);
       return await reply.code(NO_CONTENT).send(null);
     }
   );

@@ -1,27 +1,17 @@
-import { asc, eq } from 'drizzle-orm';
-import type { Db } from '../db/client.js';
-import { bears } from '../db/schema.js';
 import { NotFoundError } from '../errors.js';
+import type { BearRepository } from '../repositories/bear-repository.js';
 import type { Bear } from '../schemas/bear.js';
 
-const bearColumns = {
-  id: bears.id,
-  name: bears.name,
-  binomial: bears.binomial,
-  imageUrl: bears.imageUrl,
-  range: bears.range,
-};
-
-export async function loadBears(db: Db): Promise<Bear[]> {
-  return await db.select(bearColumns).from(bears).orderBy(asc(bears.position));
+export async function loadBears(bears: BearRepository): Promise<Bear[]> {
+  return await bears.list();
 }
 
-export async function loadBear(db: Db, id: string): Promise<Bear> {
-  const [bear] = await db
-    .select(bearColumns)
-    .from(bears)
-    .where(eq(bears.id, id));
-  if (bear === undefined) {
+export async function loadBear(
+  bears: BearRepository,
+  id: string
+): Promise<Bear> {
+  const bear = await bears.findById(id);
+  if (bear === null) {
     throw new NotFoundError(`No bear with id "${id}"`);
   }
   return bear;

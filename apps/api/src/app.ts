@@ -10,8 +10,10 @@ import { z } from 'zod';
 import { configPlugin } from './plugins/config.js';
 import { corsPlugin } from './plugins/cors.js';
 import { dbPlugin } from './plugins/db.js';
+import { repositoriesPlugin } from './plugins/repositories.js';
 import { swaggerPlugin } from './plugins/swagger.js';
 import { PROBLEM_CONTENT_TYPE, problem, toProblem } from './problem.js';
+import type { Repos } from './repositories/index.js';
 import { bearRoutes } from './routes/bears.js';
 import { commentRoutes } from './routes/comments.js';
 import { debugRoutes } from './routes/debug.js';
@@ -27,7 +29,14 @@ function genReqId(request: IncomingMessage): string {
   return result.success ? result.data : randomUUID();
 }
 
-export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
+export interface AppDependencies {
+  repos?: Repos;
+}
+
+export function buildApp(
+  options: FastifyServerOptions = {},
+  dependencies: AppDependencies = {}
+): FastifyInstance {
   const app = Fastify({ ...options, requestIdHeader: false, genReqId });
 
   // Route schemas are written with zod instead of JSON Schema.
@@ -61,6 +70,7 @@ export function buildApp(options: FastifyServerOptions = {}): FastifyInstance {
 
   void app.register(configPlugin);
   void app.register(dbPlugin);
+  void app.register(repositoriesPlugin, { repos: dependencies.repos });
   void app.register(corsPlugin);
   void app.register(swaggerPlugin);
   void app.register(healthRoutes);
