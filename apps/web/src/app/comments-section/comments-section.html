@@ -16,5 +16,10 @@
       [comments]="comments()"
       (deleted)="onDeleteComment($event)"
     />
+    @if (nextCursor() !== null) {
+      <button type="button" [disabled]="loadingMore()" (click)="onLoadMore()">
+        {{ loadingMore() ? 'Loading...' : 'Load more comments' }}
+      </button>
+    }
   </div>
 </section>

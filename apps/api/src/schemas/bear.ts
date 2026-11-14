@@ -14,3 +14,9 @@ export const Bear = z.object({
 });
 
 export type Bear = z.infer<typeof Bear>;
+
+const MAX_QUERY_LENGTH = 50;
+
+export const BearsQuery = z.object({
+  q: z.string().trim().max(MAX_QUERY_LENGTH).optional(),
+});

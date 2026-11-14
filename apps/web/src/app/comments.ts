@@ -9,6 +9,11 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface CommentPage {
+  items: Comment[];
+  nextCursor: string | null;
+}
+
 // What the comment form sends to the API.
 export interface NewComment {
   author: string;
@@ -17,19 +22,19 @@ export interface NewComment {
 
 export async function loadComments(
   bearId: string,
+  cursor: string | null,
   signal?: AbortSignal
-): Promise<Comment[]> {
+): Promise<CommentPage> {
+  const query = cursor === null ? '' : `?cursor=${encodeURIComponent(cursor)}`;
   const res = await fetch(
-    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`),
-    {
-      signal,
-    }
+    apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments${query}`),
+    { signal }
   );
   if (!res.ok) {
     throw await toApiError(res);
   }
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- the API validated the data with zod.
-  return (await res.json()) as Comment[];
+  return (await res.json()) as CommentPage;
 }
 
 export async function createComment(

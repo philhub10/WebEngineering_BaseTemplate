@@ -1,14 +1,29 @@
+import { decodeCursor, encodeCursor } from '../cursor.js';
 import { NotFoundError } from '../errors.js';
 import type { Repos } from '../repositories/index.js';
-import type { Comment, NewComment } from '../schemas/comment.js';
+import type {
+  Comment,
+  CommentPage,
+  CommentsQuery,
+  NewComment,
+} from '../schemas/comment.js';
 import { loadBear } from './bears.js';
 
 export async function listComments(
   repos: Repos,
-  bearId: string
-): Promise<Comment[]> {
+  bearId: string,
+  query: CommentsQuery
+): Promise<CommentPage> {
+  const cursor = query.cursor === undefined ? null : decodeCursor(query.cursor);
   await loadBear(repos.bears, bearId);
-  return await repos.comments.listByBear(bearId);
+  const page = await repos.comments.listByBear(bearId, {
+    limit: query.limit,
+    cursor,
+  });
+  return {
+    items: page.items,
+    nextCursor: page.nextCursor === null ? null : encodeCursor(page.nextCursor),
+  };
 }
 
 export async function createComment(

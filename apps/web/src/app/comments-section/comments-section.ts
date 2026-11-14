@@ -24,15 +24,19 @@ export class CommentsSection implements OnInit, OnDestroy {
 
   protected readonly commentsExpanded = signal(false);
   protected readonly comments = signal<Comment[]>([]);
+  // Where the next page starts; null when all comments are loaded.
+  protected readonly nextCursor = signal<string | null>(null);
+  protected readonly loadingMore = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
   // Cancels the loading request if this component is destroyed first.
   private readonly abortController = new AbortController();
 
   ngOnInit(): void {
-    loadComments(this.bearId(), this.abortController.signal)
-      .then((comments) => {
-        this.comments.set(comments);
+    loadComments(this.bearId(), null, this.abortController.signal)
+      .then((page) => {
+        this.comments.set(page.items);
+        this.nextCursor.set(page.nextCursor);
       })
       .catch((error: unknown) => {
         if (this.abortController.signal.aborted) return;
@@ -48,11 +52,31 @@ export class CommentsSection implements OnInit, OnDestroy {
     this.commentsExpanded.update((expanded) => !expanded);
   }
 
+  protected onLoadMore(): void {
+    const cursor = this.nextCursor();
+    if (cursor === null) return;
+    this.loadingMore.set(true);
+    loadComments(this.bearId(), cursor, this.abortController.signal)
+      .then((page) => {
+        this.errorMessage.set(null);
+        this.comments.update((comments) => [...comments, ...page.items]);
+        this.nextCursor.set(page.nextCursor);
+      })
+      .catch((error: unknown) => {
+        if (this.abortController.signal.aborted) return;
+        this.showError('More comments could not be loaded.', error);
+      })
+      .finally(() => {
+        this.loadingMore.set(false);
+      });
+  }
+
   protected onAddComment(newComment: NewComment): void {
     createComment(this.bearId(), newComment)
       .then((comment) => {
         this.errorMessage.set(null);
-        this.comments.update((comments) => [...comments, comment]);
+        // Newest first, like the API.
+        this.comments.update((comments) => [comment, ...comments]);
       })
       .catch((error: unknown) => {
         this.showError('Your comment could not be saved.', error);

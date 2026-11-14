@@ -7,6 +7,13 @@ export abstract class AppError extends Error {
   readonly publicDetail: string | null = null;
 }
 
+export class BadRequestError extends AppError {
+  override name = 'BadRequestError';
+  readonly status = 400;
+  readonly type = `${PROBLEM_BASE}/bad-request`;
+  readonly title = 'Bad request';
+}
+
 export class NotFoundError extends AppError {
   override name = 'NotFoundError';
   readonly status = 404;

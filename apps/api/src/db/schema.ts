@@ -9,6 +9,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+const MILLISECOND_PRECISION = 3;
+
 export const bears = pgTable('bears', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -32,7 +34,11 @@ export const comments = pgTable(
       .references(() => bears.id, { onDelete: 'cascade' }),
     author: text('author').notNull(),
     text: text('text').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
+    // Milliseconds like a JavaScript Date, so a cursor matches exactly.
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      precision: MILLISECOND_PRECISION,
+    })
       .notNull()
       .defaultNow(),
   },

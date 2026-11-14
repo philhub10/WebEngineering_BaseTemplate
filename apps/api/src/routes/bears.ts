@@ -1,7 +1,7 @@
 import type { FastifyPluginCallback } from 'fastify';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
-import { Bear, BearId } from '../schemas/bear.js';
+import { Bear, BearId, BearsQuery } from '../schemas/bear.js';
 import { problemResponses } from '../schemas/problem.js';
 import { loadBear, loadBears } from '../services/bears.js';
 
@@ -14,11 +14,12 @@ export const bearRoutes: FastifyPluginCallback = (app, _options, done) => {
     '/api/bears',
     {
       schema: {
+        querystring: BearsQuery,
         response: { [OK]: z.array(Bear), ...problemResponses },
       },
     },
-    async () => {
-      return await loadBears(app.repos.bears);
+    async (request) => {
+      return await loadBears(app.repos.bears, request.query.q);
     }
   );
 

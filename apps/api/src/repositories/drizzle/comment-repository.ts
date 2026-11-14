@@ -1,8 +1,12 @@
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import { comments } from '../../db/schema.js';
 import type { Comment, NewComment } from '../../schemas/comment.js';
-import type { CommentRepository } from '../comment-repository.js';
+import type {
+  CommentPageRequest,
+  CommentPageResult,
+  CommentRepository,
+} from '../comment-repository.js';
 
 type CommentRow = typeof comments.$inferSelect;
 
@@ -17,17 +21,41 @@ function toComment(row: CommentRow): Comment {
 }
 
 const oldestFirst = [asc(comments.createdAt), asc(comments.id)];
+const newestFirst = [desc(comments.createdAt), desc(comments.id)];
+const LOOKAHEAD = 1;
+const FIRST = 0;
+const LAST = -1;
 
 export class DrizzleCommentRepository implements CommentRepository {
   constructor(private readonly db: Db) {}
 
-  async listByBear(bearId: string): Promise<Comment[]> {
+  async listByBear(
+    bearId: string,
+    { limit, cursor }: CommentPageRequest
+  ): Promise<CommentPageResult> {
+    // Row-value comparison: matches the index (bear_id, created_at, id), so
+    // PostgreSQL seeks to the cursor instead of skipping rows like OFFSET.
+    const afterCursor =
+      cursor === null
+        ? undefined
+        : sql`(${comments.createdAt}, ${comments.id}) < (${cursor.createdAt}::timestamptz, ${cursor.id}::uuid)`;
     const rows = await this.db
       .select()
       .from(comments)
-      .where(eq(comments.bearId, bearId))
-      .orderBy(...oldestFirst);
-    return rows.map(toComment);
+      .where(and(eq(comments.bearId, bearId), afterCursor))
+      .orderBy(...newestFirst)
+      .limit(limit + LOOKAHEAD);
+
+    const items = rows.slice(FIRST, limit).map(toComment);
+    const last = items.at(LAST);
+    const hasMore = rows.length > limit;
+    return {
+      items,
+      nextCursor:
+        hasMore && last !== undefined
+          ? { createdAt: last.createdAt, id: last.id }
+          : null,
+    };
   }
 
   async listByBears(bearIds: string[]): Promise<Map<string, Comment[]>> {

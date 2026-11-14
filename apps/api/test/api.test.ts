@@ -5,6 +5,11 @@ import { MemoryBearRepository } from '../src/repositories/memory/bear-repository
 import { MemoryCommentRepository } from '../src/repositories/memory/comment-repository.js';
 import type { Bear } from '../src/schemas/bear.js';
 
+interface CommentPageBody {
+  items: Array<{ id: string }>;
+  nextCursor: string | null;
+}
+
 const fixture: Bear[] = [
   {
     id: 'ailuropoda-melanoleuca',
@@ -70,6 +75,22 @@ describe('bears', () => {
     expect(res.statusCode).toBe(404);
     expect(res.headers['content-type']).toContain('application/problem+json');
   });
+
+  it('filters by name with ?q=, case-insensitive', async () => {
+    const app = await setup();
+    const res = await app.inject({ method: 'GET', url: '/api/bears?q=BROWN' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([fixture[1]]);
+  });
+
+  it('returns an empty list if no name matches', async () => {
+    const app = await setup();
+    const res = await app.inject({ method: 'GET', url: '/api/bears?q=teddy' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+  });
 });
 
 describe('comments', () => {
@@ -91,7 +112,7 @@ describe('comments', () => {
       method: 'GET',
       url: '/api/bears/ursus-arctos/comments',
     });
-    expect(list.json()).toEqual([comment]);
+    expect(list.json()).toEqual({ items: [comment], nextCursor: null });
   });
 
   it('answers 400 for an empty text', async () => {
@@ -130,5 +151,61 @@ describe('comments', () => {
 
     expect(first.statusCode).toBe(204);
     expect(second.statusCode).toBe(404);
+  });
+
+  it('pages through comments with limit and nextCursor', async () => {
+    const app = await setup();
+    const ids: string[] = [];
+    for (const text of ['first', 'second', 'third']) {
+      // eslint-disable-next-line no-await-in-loop -- one after another on purpose, like real users
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/bears/ursus-arctos/comments',
+        payload: { author: 'Lena', text },
+      });
+      ids.push(created.json<{ id: string }>().id);
+    }
+
+    const first = await app.inject({
+      method: 'GET',
+      url: '/api/bears/ursus-arctos/comments?limit=2',
+    });
+    const page1 = first.json<CommentPageBody>();
+    expect(first.statusCode).toBe(200);
+    expect(page1.items).toHaveLength(2);
+    expect(page1.nextCursor).toEqual(expect.any(String));
+
+    const second = await app.inject({
+      method: 'GET',
+      url: `/api/bears/ursus-arctos/comments?limit=2&cursor=${String(page1.nextCursor)}`,
+    });
+    const page2 = second.json<CommentPageBody>();
+    expect(page2.items).toHaveLength(1);
+    expect(page2.nextCursor).toBeNull();
+
+    // Every comment exactly once across both pages.
+    const seen = [...page1.items, ...page2.items].map((c) => c.id);
+    expect(seen.toSorted()).toEqual(ids.toSorted());
+  });
+
+  it('answers 400 for an invalid cursor', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/bears/ursus-arctos/comments?cursor=not-a-cursor',
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+  });
+
+  it('answers 400 for a limit out of range', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/bears/ursus-arctos/comments?limit=0',
+    });
+
+    expect(res.statusCode).toBe(400);
   });
 });

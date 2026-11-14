@@ -694,7 +694,63 @@ Make `GET /api/bears/:id/comments` cursor-paginated (`limit`, `cursor` based on 
 
 **Done:** the UI pages through comments; the README shows the two query plans and the measured difference; the index lives in a migration.
 
+**Measurement:**
+
+Seed 100,000 comments:
+```bash
+npm run db:seed:comments
+```
+
+Run the query plan without and with the index (the index is dropped inside a transaction and restored by `ROLLBACK`):
+```bash
+podman exec -i webengineering_basetemplate_db_1 psql -U bears -d bears < apps/api/sql/explain-comments.sql
+```
+
+Query: first page of comments of `ursus-arctos` (`WHERE bear_id = 'ursus-arctos' ORDER BY created_at DESC, id DESC LIMIT 21`), 100,000 comments, 12,500 per bear.
+
+**Without index:**
+```
+Limit  (cost=3013.63..3013.68 rows=21 width=83) (actual time=8.128..8.130 rows=21.00 loops=1)
+  Buffers: shared hit=1437
+  ->  Sort  (cost=3013.63..3044.47 rows=12337 width=83) (actual time=8.126..8.128 rows=21.00 loops=1)
+        Sort Key: created_at DESC, id DESC
+        Sort Method: top-N heapsort  Memory: 30kB
+        Buffers: shared hit=1437
+        ->  Seq Scan on comments  (cost=0.00..2681.00 rows=12337 width=83) (actual time=0.004..6.841 rows=12500.00 loops=1)
+              Filter: (bear_id = 'ursus-arctos'::text)
+              Rows Removed by Filter: 87500
+              Buffers: shared hit=1431
+Planning Time: 0.304 ms
+Execution Time: 8.145 ms
+```
+
+**With index** `comments_bear_created_idx (bear_id, created_at, id)`:
+```
+Limit  (cost=0.42..11.58 rows=21 width=83) (actual time=0.016..0.021 rows=21.00 loops=1)
+  Buffers: shared hit=6
+  ->  Index Scan Backward using comments_bear_created_idx on comments  (cost=0.42..6555.98 rows=12337 width=83) (actual time=0.016..0.019 rows=21.00 loops=1)
+        Index Cond: (bear_id = 'ursus-arctos'::text)
+        Index Searches: 1
+        Buffers: shared hit=6
+Planning Time: 0.102 ms
+Execution Time: 0.030 ms
+```
+
 **Theory question:** Why does offset pagination get slower and skip or repeat rows, and how does a cursor avoid that? What is a B-tree index, why does the column order in a composite index matter, and why may PostgreSQL ignore an index on a small table?
+
+> **Answer:**
+>
+> **Offset gets slower:** `LIMIT 20 OFFSET 10000` doesn't jump to row 10,000. The database reads and sorts 10,020 rows and throws 10,000 away. Page 500 costs 500 times as much as page 1.
+>
+> **Offset skips or repeats rows:** the page is defined by a count. If a new comment arrives between page 1 and page 2, every row shifts by one: the last comment of page 1 shows up again on page 2. If a comment is deleted, one row is skipped.
+>
+> **How a cursor avoids that:** the cursor remembers *where* the last page ended (`created_at` and `id` of the last comment), not *how many* rows came before. The next page is "everything older than this comment". With the index, PostgreSQL jumps straight to that position and reads 20 entries, so page 500 is as fast as page 1.
+>
+> **B-tree index:** a sorted tree. The root and inner pages hold key ranges, the leaf pages hold the sorted keys with a pointer to the row in the table, and the leaves are linked to each other. A lookup goes from the root to the right leaf in 3 to 4 page reads and then walks sideways along the sorted leaves.
+>
+> **Column order matters:** the index is sorted by the first column, then by the second within it, and so on, like a phone book (last name, then first name). (`bear_id`, `created_at`, `id`) serves `WHERE bear_id = ? ORDER BY created_at DESC, id DESC`: find the bear, then the comments are already sorted.
+>
+> **Why PostgreSQL may ignore an index on a small table:** the planner estimates the cost. If the whole table fits in a few pages, reading it sequentially is cheaper than reading the index and then jumping to the rows. Other reasons: outdated statistics, or the query doesn't match the index.
 
 #### Task 5: Transactions and the lost update
 

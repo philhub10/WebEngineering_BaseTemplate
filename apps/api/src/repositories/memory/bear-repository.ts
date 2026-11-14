@@ -8,8 +8,13 @@ export class MemoryBearRepository implements BearRepository {
     this.bears = new Map(initial.map((bear) => [bear.id, bear]));
   }
 
-  async list(): Promise<Bear[]> {
-    return await Promise.resolve([...this.bears.values()]);
+  async list(nameFilter?: string): Promise<Bear[]> {
+    const needle = nameFilter?.toLowerCase() ?? '';
+    return await Promise.resolve(
+      [...this.bears.values()].filter((bear) =>
+        bear.name.toLowerCase().includes(needle)
+      )
+    );
   }
 
   async findById(id: string): Promise<Bear | null> {

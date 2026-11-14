@@ -16,7 +16,8 @@
     "lint:fix": "eslint . --fix",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
-    "db:seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts"
+    "db:seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts",
+    "db:seed:comments": "tsx --env-file-if-exists=../../.env src/db/seed-comments.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.1",

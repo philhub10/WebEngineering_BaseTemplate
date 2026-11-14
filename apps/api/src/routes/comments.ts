@@ -2,7 +2,12 @@ import type { FastifyPluginCallback } from 'fastify';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { BearId } from '../schemas/bear.js';
-import { Comment, NewComment } from '../schemas/comment.js';
+import {
+  Comment,
+  CommentPage,
+  CommentsQuery,
+  NewComment,
+} from '../schemas/comment.js';
 import { problemResponses } from '../schemas/problem.js';
 import {
   createComment,
@@ -22,11 +27,12 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
     {
       schema: {
         params: z.object({ id: BearId }),
-        response: { [OK]: z.array(Comment), ...problemResponses },
+        querystring: CommentsQuery,
+        response: { [OK]: CommentPage, ...problemResponses },
       },
     },
     async (request) => {
-      return await listComments(app.repos, request.params.id);
+      return await listComments(app.repos, request.params.id, request.query);
     }
   );
 

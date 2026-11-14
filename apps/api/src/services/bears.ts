@@ -2,8 +2,11 @@ import { NotFoundError } from '../errors.js';
 import type { BearRepository } from '../repositories/bear-repository.js';
 import type { Bear } from '../schemas/bear.js';
 
-export async function loadBears(bears: BearRepository): Promise<Bear[]> {
-  return await bears.list();
+export async function loadBears(
+  bears: BearRepository,
+  q?: string
+): Promise<Bear[]> {
+  return await bears.list(q === '' ? undefined : q);
 }
 
 export async function loadBear(
