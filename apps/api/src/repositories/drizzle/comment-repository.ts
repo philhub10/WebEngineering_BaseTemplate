@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import type { Db } from '../../db/client.js';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import type { Executor } from '../../db/client.js';
 import { comments } from '../../db/schema.js';
 import type { Comment, NewComment } from '../../schemas/comment.js';
 import type {
   CommentPageRequest,
   CommentPageResult,
+  CommentReports,
   CommentRepository,
 } from '../comment-repository.js';
 
@@ -17,6 +18,8 @@ function toComment(row: CommentRow): Comment {
     author: row.author,
     text: row.text,
     createdAt: row.createdAt.toISOString(),
+    reportCount: row.reportCount,
+    hiddenAt: row.hiddenAt?.toISOString() ?? null,
   };
 }
 
@@ -27,7 +30,7 @@ const FIRST = 0;
 const LAST = -1;
 
 export class DrizzleCommentRepository implements CommentRepository {
-  constructor(private readonly db: Db) {}
+  constructor(private readonly db: Executor) {}
 
   async listByBear(
     bearId: string,
@@ -42,7 +45,9 @@ export class DrizzleCommentRepository implements CommentRepository {
     const rows = await this.db
       .select()
       .from(comments)
-      .where(and(eq(comments.bearId, bearId), afterCursor))
+      .where(
+        and(eq(comments.bearId, bearId), isNull(comments.hiddenAt), afterCursor)
+      )
       .orderBy(...newestFirst)
       .limit(limit + LOOKAHEAD);
 
@@ -66,7 +71,7 @@ export class DrizzleCommentRepository implements CommentRepository {
     const rows = await this.db
       .select()
       .from(comments)
-      .where(inArray(comments.bearId, bearIds))
+      .where(and(inArray(comments.bearId, bearIds), isNull(comments.hiddenAt)))
       .orderBy(...oldestFirst);
     return Map.groupBy(rows.map(toComment), (comment) => comment.bearId);
   }
@@ -88,5 +93,29 @@ export class DrizzleCommentRepository implements CommentRepository {
       .where(eq(comments.id, id))
       .returning({ id: comments.id });
     return deleted !== undefined;
+  }
+
+  async findById(
+    id: string,
+    options = { lock: false }
+  ): Promise<Comment | null> {
+    const query = this.db.select().from(comments).where(eq(comments.id, id));
+    const [row] = options.lock ? await query.for('update') : await query;
+    return row === undefined ? null : toComment(row);
+  }
+
+  async updateReports(
+    id: string,
+    { reportCount, hiddenAt }: CommentReports
+  ): Promise<Comment | null> {
+    const [row] = await this.db
+      .update(comments)
+      .set({
+        reportCount,
+        hiddenAt: hiddenAt === null ? null : new Date(hiddenAt),
+      })
+      .where(eq(comments.id, id))
+      .returning();
+    return row === undefined ? null : toComment(row);
   }
 }

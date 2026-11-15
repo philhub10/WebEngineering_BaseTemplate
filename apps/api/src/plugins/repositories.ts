@@ -1,8 +1,7 @@
 import fp from 'fastify-plugin';
 import type { FastifyPluginCallback } from 'fastify';
 import type { Repos } from '../repositories/index.js';
-import { DrizzleBearRepository } from '../repositories/drizzle/bear-repository.js';
-import { DrizzleCommentRepository } from '../repositories/drizzle/comment-repository.js';
+import { createDrizzleRepos } from '../repositories/drizzle/index.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -19,13 +18,7 @@ const repositories: FastifyPluginCallback<RepositoriesOptions> = (
   options,
   done
 ) => {
-  app.decorate(
-    'repos',
-    options.repos ?? {
-      bears: new DrizzleBearRepository(app.db),
-      comments: new DrizzleCommentRepository(app.db),
-    }
-  );
+  app.decorate('repos', options.repos ?? createDrizzleRepos(app.db));
   done();
 };
 

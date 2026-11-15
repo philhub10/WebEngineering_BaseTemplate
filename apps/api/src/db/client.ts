@@ -1,10 +1,16 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type {
+  NodePgDatabase,
+  NodePgQueryResultHKT,
+} from 'drizzle-orm/node-postgres';
+import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { Pool } from 'pg';
 import type { Env } from '../schemas/env.js';
 import * as schema from './schema.js';
 
 export type Db = NodePgDatabase<typeof schema>;
+// The pool (db) or an open transaction (tx): repositories run on either.
+export type Executor = PgDatabase<NodePgQueryResultHKT, typeof schema>;
 
 const IDLE_TIMEOUT_MS = 10_000;
 

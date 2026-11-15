@@ -10,7 +10,12 @@ export default defineConfig([
   },
   {
     // CLI scripts, not the server: console output is their interface.
-    files: ['src/db/migrate.ts', 'src/db/seed.ts', 'src/db/seed-comments.ts'],
+    files: [
+      'src/db/migrate.ts',
+      'src/db/seed.ts',
+      'src/db/seed-comments.ts',
+      'scripts/**/*.ts',
+    ],
     rules: { 'no-console': 'off' },
   },
   {

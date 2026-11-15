@@ -7,6 +7,7 @@ import type {
 import type {
   CommentPageRequest,
   CommentPageResult,
+  CommentReports,
   CommentRepository,
 } from '../comment-repository.js';
 
@@ -14,6 +15,7 @@ const FIRST = 0;
 const LAST = -1;
 
 const EQUAL = 0;
+const NO_REPORTS = 0;
 
 // Same order as ORDER BY created_at DESC, id DESC.
 function newestFirst(a: Comment, b: Comment): number {
@@ -37,6 +39,7 @@ export class MemoryCommentRepository implements CommentRepository {
   ): Promise<CommentPageResult> {
     const matching = [...this.comments.values()]
       .filter((comment) => comment.bearId === bearId)
+      .filter((comment) => comment.hiddenAt === null)
       .filter((comment) => cursor === null || isBefore(comment, cursor))
       .sort(newestFirst);
 
@@ -54,8 +57,8 @@ export class MemoryCommentRepository implements CommentRepository {
 
   async listByBears(bearIds: string[]): Promise<Map<string, Comment[]>> {
     const wanted = new Set(bearIds);
-    const matching = [...this.comments.values()].filter((comment) =>
-      wanted.has(comment.bearId)
+    const matching = [...this.comments.values()].filter(
+      (comment) => wanted.has(comment.bearId) && comment.hiddenAt === null
     );
     return await Promise.resolve(
       Map.groupBy(matching, (comment) => comment.bearId)
@@ -69,6 +72,8 @@ export class MemoryCommentRepository implements CommentRepository {
       author: input.author,
       text: input.text,
       createdAt: new Date().toISOString(),
+      reportCount: NO_REPORTS,
+      hiddenAt: null,
     };
     this.comments.set(comment.id, comment);
     return await Promise.resolve(comment);
@@ -76,5 +81,22 @@ export class MemoryCommentRepository implements CommentRepository {
 
   async delete(id: string): Promise<boolean> {
     return await Promise.resolve(this.comments.delete(id));
+  }
+
+  async findById(id: string): Promise<Comment | null> {
+    return await Promise.resolve(this.comments.get(id) ?? null);
+  }
+
+  async updateReports(
+    id: string,
+    reports: CommentReports
+  ): Promise<Comment | null> {
+    const comment = this.comments.get(id);
+    if (comment === undefined) {
+      return null;
+    }
+    const updated = { ...comment, ...reports };
+    this.comments.set(id, updated);
+    return await Promise.resolve(updated);
   }
 }

@@ -758,7 +758,45 @@ Add a report feature: `POST /api/comments/:id/report` increments `report_count` 
 
 **Done:** the race is reproducible with the naive version, the fixed version ends with exactly 50, and both the script and your explanation are in the repository.
 
+**Reproduce the race** (API running via `npm run dev`, script in `apps/api/scripts/report-storm.ts`):
+
+Naive version, 50 concurrent reports for a new comment:
+```bash
+npm run report:storm -- --naive
+```
+Fixed version:
+```bash
+npm run report:storm
+```
+
+**Results**:
+
+| Run | Final `report_count` | Lost updates | `hidden_at` |
+|---|---|---|---|
+| Naive 1 | 3 | 47 | set |
+| Naive 2 | 2 | 48 | `null` |
+| Naive 3 | 2 | 48 | `null` |
+| Naive 4 | 2 | 48 | `null` |
+| **Fixed** | **50** | **0** | set |
+
 **Theory question:** Explain ACID and the lost-update anomaly. What does PostgreSQL's default isolation level (read committed) guarantee, and what not? Compare pessimistic locking, atomic updates and optimistic concurrency with a version column.
+
+> **Answer:**
+>
+> **ACID** describes what a transaction guarantees:
+> * **Atomicity:** all or nothing. If something fails halfway, `ROLLBACK` leaves no trace.
+> * **Consistency:** the database moves from one valid state to another; constraints (PK, FK, `CHECK`) are checked.
+> * **Isolation:** concurrent transactions don't see each other's half-done work. *How much* they see depends on the isolation level.
+> * **Durability:** once `COMMIT` returns, the data survives a crash (written to the write-ahead log).
+>
+> **Lost update:** two requests read the same `report_count = 5`, both compute `6` in TypeScript and both write `6`. Both succeed, nobody sees an error, but one report is gone (expected `7`).
+>
+> **Read committed** guarantees: no dirty reads, every statement only sees data that was already committed when the statement started. It does **not** guarantee that a value you read is still the same when you write it a moment later: between `SELECT` and `UPDATE` another transaction can commit. That's why read-then-write in application code can lose updates even inside a transaction, unless the row is locked.
+>
+> **Three fixes:**
+> * **Pessimistic locking** (`SELECT ... FOR UPDATE`, used here): the first transaction locks the row, the others **wait** until it commits and then read the new value. Good for multi-step logic in one short transaction. Cost: writers queue up on the row.
+> * **Atomic update** (`UPDATE ... SET report_count = report_count + 1 RETURNING *`): the database computes the new value in a single statement, so there is no gap between read and write. The shortest and fastest fix for counters, but the logic must fit into SQL.
+> * **Optimistic concurrency** (version column): read the row with its `version`, then `UPDATE ... WHERE id = $1 AND version = $2`. If someone else was faster, 0 rows are updated and the code retries or answers 409. No waiting and no locks held, good for long edits (e.g. an edit form). Cost: retry logic, and under heavy contention many retries.
 
 ## 6. Authentication, Authorisation and Web Security
 

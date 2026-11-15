@@ -10,6 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 const MILLISECOND_PRECISION = 3;
+const NO_REPORTS = 0;
 
 export const bears = pgTable('bears', {
   id: text('id').primaryKey(),
@@ -41,6 +42,11 @@ export const comments = pgTable(
     })
       .notNull()
       .defaultNow(),
+    reportCount: integer('report_count').notNull().default(NO_REPORTS),
+    hiddenAt: timestamp('hidden_at', {
+      withTimezone: true,
+      precision: MILLISECOND_PRECISION,
+    }),
   },
   (table) => [
     index('comments_bear_created_idx').on(
@@ -56,5 +62,6 @@ export const comments = pgTable(
       'comments_text_length',
       sql`char_length(${table.text}) BETWEEN 1 AND 2000`
     ),
+    check('comments_report_count_non_negative', sql`${table.reportCount} >= 0`),
   ]
 );

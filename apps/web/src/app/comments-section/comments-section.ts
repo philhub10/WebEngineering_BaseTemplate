@@ -9,7 +9,12 @@ import { CommentToggle } from './comment-toggle/comment-toggle';
 import { CommentForm } from './comment-form/comment-form';
 import { CommentList } from './comment-list/comment-list';
 import type { Comment, NewComment } from '../comments';
-import { createComment, deleteComment, loadComments } from '../comments';
+import {
+  createComment,
+  deleteComment,
+  loadComments,
+  reportComment,
+} from '../comments';
 import { errorMessage } from '../problem';
 
 @Component({
@@ -93,6 +98,23 @@ export class CommentsSection implements OnInit, OnDestroy {
       })
       .catch((error: unknown) => {
         this.showError('The comment could not be deleted.', error);
+      });
+  }
+
+  protected onReportComment(id: string): void {
+    reportComment(id)
+      .then((reported) => {
+        this.errorMessage.set(null);
+        this.comments.update((comments) =>
+          reported.hiddenAt === null
+            ? comments.map((comment) =>
+                comment.id === id ? reported : comment
+              )
+            : comments.filter((comment) => comment.id !== id)
+        );
+      })
+      .catch((error: unknown) => {
+        this.showError('The comment could not be reported.', error);
       });
   }
 

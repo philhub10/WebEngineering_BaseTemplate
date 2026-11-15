@@ -1,8 +1,7 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
-import { MemoryBearRepository } from '../src/repositories/memory/bear-repository.js';
-import { MemoryCommentRepository } from '../src/repositories/memory/comment-repository.js';
+import { createMemoryRepos } from '../src/repositories/memory/index.js';
 import type { Bear } from '../src/schemas/bear.js';
 
 interface CommentPageBody {
@@ -29,15 +28,7 @@ const fixture: Bear[] = [
 
 // A fresh app with in-memory repositories per test: no database needed.
 async function setup(): Promise<FastifyInstance> {
-  const app = buildApp(
-    {},
-    {
-      repos: {
-        bears: new MemoryBearRepository(fixture),
-        comments: new MemoryCommentRepository(),
-      },
-    }
-  );
+  const app = buildApp({}, { repos: createMemoryRepos(fixture) });
   await app.ready();
   onTestFinished(async () => {
     await app.close();
@@ -207,5 +198,72 @@ describe('comments', () => {
     });
 
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('reports', () => {
+  async function createComment(app: FastifyInstance): Promise<string> {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/bears/ursus-arctos/comments',
+      payload: { author: 'Lena', text: 'Report me' },
+    });
+    return res.json<{ id: string }>().id;
+  }
+
+  it('counts reports and hides the comment at the third', async () => {
+    const app = await setup();
+    const id = await createComment(app);
+    const url = `/api/comments/${id}/report`;
+
+    const first = await app.inject({ method: 'POST', url });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ reportCount: 1, hiddenAt: null });
+
+    await app.inject({ method: 'POST', url });
+    const third = await app.inject({ method: 'POST', url });
+    const reported = third.json<{
+      reportCount: number;
+      hiddenAt: string | null;
+    }>();
+    expect(reported.reportCount).toBe(3);
+    expect(reported.hiddenAt).not.toBeNull();
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/bears/ursus-arctos/comments',
+    });
+    expect(list.json<CommentPageBody>().items).toEqual([]);
+  });
+
+  it('counts 50 concurrent reports exactly once each', async () => {
+    const app = await setup();
+    const id = await createComment(app);
+    const url = `/api/comments/${id}/report`;
+
+    const responses = await Promise.all(
+      Array.from(
+        { length: 50 },
+        async () => await app.inject({ method: 'POST', url })
+      )
+    );
+    const counts = responses.map(
+      (res) => res.json<{ reportCount: number }>().reportCount
+    );
+
+    // Every report saw the previous one: 1, 2, ..., 50 without gaps.
+    expect(counts.toSorted((a, b) => a - b)).toEqual(
+      Array.from({ length: 50 }, (_, i) => i + 1)
+    );
+  });
+
+  it('answers 404 when reporting an unknown comment', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/comments/00000000-0000-4000-8000-000000000000/report',
+    });
+
+    expect(res.statusCode).toBe(404);
   });
 });

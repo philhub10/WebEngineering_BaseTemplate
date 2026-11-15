@@ -10,6 +10,11 @@ export interface CommentPageResult {
   nextCursor: CommentCursor | null;
 }
 
+export interface CommentReports {
+  reportCount: number;
+  hiddenAt: string | null;
+}
+
 export interface CommentRepository {
   listByBear: (
     bearId: string,
@@ -18,4 +23,12 @@ export interface CommentRepository {
   listByBears: (bearIds: string[]) => Promise<Map<string, Comment[]>>;
   create: (bearId: string, input: NewComment) => Promise<Comment>;
   delete: (id: string) => Promise<boolean>;
+  findById: (
+    id: string,
+    options?: { lock: boolean }
+  ) => Promise<Comment | null>;
+  updateReports: (
+    id: string,
+    reports: CommentReports
+  ) => Promise<Comment | null>;
 }

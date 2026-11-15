@@ -19,6 +19,7 @@
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
     "db:seed:comments": "npm run db:seed:comments -w apps/api",
+    "report:storm": "npm run report:storm -w apps/api --",
     "format": "prettier --write \"apps/*/{src,test}/**/*.{ts,html,css}\"",
     "format:check": "prettier --check \"apps/*/{src,test}/**/*.{ts,html,css}\"",
     "prepare": "husky"

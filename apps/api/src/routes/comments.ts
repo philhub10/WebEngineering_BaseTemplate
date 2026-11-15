@@ -13,6 +13,7 @@ import {
   createComment,
   deleteComment,
   listComments,
+  reportComment,
 } from '../services/comments.js';
 
 const OK = 200;
@@ -72,6 +73,19 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
     async (request, reply) => {
       await deleteComment(app.repos, request.params.commentId);
       return await reply.code(NO_CONTENT).send(null);
+    }
+  );
+
+  api.post(
+    '/api/comments/:commentId/report',
+    {
+      schema: {
+        params: z.object({ commentId: z.uuid('must be a UUID') }),
+        response: { [OK]: Comment, ...problemResponses },
+      },
+    },
+    async (request) => {
+      return await reportComment(app.repos, request.params.commentId);
     }
   );
 

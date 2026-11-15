@@ -7,6 +7,8 @@ export interface Comment {
   author: string;
   text: string;
   createdAt: string;
+  reportCount: number;
+  hiddenAt: string | null;
 }
 
 export interface CommentPage {
@@ -63,4 +65,16 @@ export async function deleteComment(id: string): Promise<void> {
   if (!res.ok) {
     throw await toApiError(res);
   }
+}
+
+export async function reportComment(id: string): Promise<Comment> {
+  const res = await fetch(
+    apiUrl(`/api/comments/${encodeURIComponent(id)}/report`),
+    { method: 'POST' }
+  );
+  if (!res.ok) {
+    throw await toApiError(res);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- the API validated the data with zod.
+  return (await res.json()) as Comment;
 }
