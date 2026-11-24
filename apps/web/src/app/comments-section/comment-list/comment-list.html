@@ -4,10 +4,14 @@
     <li>
       <p>{{ comment.author }}</p>
       <p>{{ comment.text }}</p>
-      <button type="button" (click)="reported.emit(comment.id)">
-        Report ({{ comment.reportCount }})
-      </button>
-      <button type="button" (click)="deleted.emit(comment.id)">Delete</button>
+      @if (user() !== null) {
+        <button type="button" (click)="reported.emit(comment.id)">
+          Report ({{ comment.reportCount }})
+        </button>
+      }
+      @if (canDelete(comment)) {
+        <button type="button" (click)="deleted.emit(comment.id)">Delete</button>
+      }
     </li>
   }
 </ul>

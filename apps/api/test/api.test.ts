@@ -1,42 +1,11 @@
-import { describe, expect, it, onTestFinished } from 'vitest';
-import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
-import { buildApp } from '../src/app.js';
-import { createMemoryRepos } from '../src/repositories/memory/index.js';
-import type { Repos } from '../src/repositories/index.js';
-import type { Bear } from '../src/schemas/bear.js';
+import { describe, expect, it } from 'vitest';
+import type { FastifyInstance } from 'fastify';
+import { fixture, setup, signIn } from './helpers.js';
+import type { Session } from './helpers.js';
 
 interface CommentPageBody {
   items: Array<{ id: string }>;
   nextCursor: string | null;
-}
-
-const fixture: Bear[] = [
-  {
-    id: 'ailuropoda-melanoleuca',
-    name: 'Giant panda',
-    binomial: 'Ailuropoda melanoleuca',
-    imageUrl: null,
-    range: 'Central China',
-  },
-  {
-    id: 'ursus-arctos',
-    name: 'Brown bear',
-    binomial: 'Ursus arctos',
-    imageUrl: 'https://upload.wikimedia.org/brown-bear.jpg',
-    range: 'Eurasia and North America',
-  },
-];
-
-// A fresh app with in-memory repositories per test: no database needed.
-async function setup(
-  repos: Repos = createMemoryRepos(fixture)
-): Promise<FastifyInstance> {
-  const app = buildApp({}, { repos });
-  await app.ready();
-  onTestFinished(async () => {
-    await app.close();
-  });
-  return app;
 }
 
 describe('bears', () => {
@@ -92,8 +61,10 @@ describe('comments', () => {
 
   it('creates a comment and lists it for its bear', async () => {
     const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
     const created = await app.inject({
       method: 'POST',
+      cookies: lena,
       url: '/api/bears/ursus-arctos/comments',
       payload,
     });
@@ -111,8 +82,10 @@ describe('comments', () => {
 
   it('answers 400 for an empty text', async () => {
     const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
     const res = await app.inject({
       method: 'POST',
+      cookies: lena,
       url: '/api/bears/ursus-arctos/comments',
       payload: { author: 'Lena', text: '   ' },
     });
@@ -122,8 +95,10 @@ describe('comments', () => {
 
   it('answers 404 when commenting on an unknown bear', async () => {
     const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
     const res = await app.inject({
       method: 'POST',
+      cookies: lena,
       url: '/api/bears/teddy-bear/comments',
       payload,
     });
@@ -133,15 +108,17 @@ describe('comments', () => {
 
   it('deletes a comment once, then answers 404', async () => {
     const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
     const created = await app.inject({
       method: 'POST',
+      cookies: lena,
       url: '/api/bears/ursus-arctos/comments',
       payload,
     });
     const url = `/api/comments/${created.json<{ id: string }>().id}`;
 
-    const first = await app.inject({ method: 'DELETE', url });
-    const second = await app.inject({ method: 'DELETE', url });
+    const first = await app.inject({ method: 'DELETE', url, cookies: lena });
+    const second = await app.inject({ method: 'DELETE', url, cookies: lena });
 
     expect(first.statusCode).toBe(204);
     expect(second.statusCode).toBe(404);
@@ -149,11 +126,13 @@ describe('comments', () => {
 
   it('pages through comments with limit and nextCursor', async () => {
     const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
     const ids: string[] = [];
     for (const text of ['first', 'second', 'third']) {
       // eslint-disable-next-line no-await-in-loop -- one after another on purpose, like real users
       const created = await app.inject({
         method: 'POST',
+        cookies: lena,
         url: '/api/bears/ursus-arctos/comments',
         payload: { author: 'Lena', text },
       });
@@ -205,9 +184,13 @@ describe('comments', () => {
 });
 
 describe('reports', () => {
-  async function createComment(app: FastifyInstance): Promise<string> {
+  async function createComment(
+    app: FastifyInstance,
+    cookies: Session
+  ): Promise<string> {
     const res = await app.inject({
       method: 'POST',
+      cookies,
       url: '/api/bears/ursus-arctos/comments',
       payload: { author: 'Lena', text: 'Report me' },
     });
@@ -216,15 +199,16 @@ describe('reports', () => {
 
   it('counts reports and hides the comment at the third', async () => {
     const app = await setup();
-    const id = await createComment(app);
+    const lena = await signIn(app, 'lena@example.org');
+    const id = await createComment(app, lena);
     const url = `/api/comments/${id}/report`;
 
-    const first = await app.inject({ method: 'POST', url });
+    const first = await app.inject({ method: 'POST', url, cookies: lena });
     expect(first.statusCode).toBe(200);
     expect(first.json()).toMatchObject({ reportCount: 1, hiddenAt: null });
 
-    await app.inject({ method: 'POST', url });
-    const third = await app.inject({ method: 'POST', url });
+    await app.inject({ method: 'POST', url, cookies: lena });
+    const third = await app.inject({ method: 'POST', url, cookies: lena });
     const reported = third.json<{
       reportCount: number;
       hiddenAt: string | null;
@@ -241,13 +225,14 @@ describe('reports', () => {
 
   it('counts 50 concurrent reports exactly once each', async () => {
     const app = await setup();
-    const id = await createComment(app);
+    const lena = await signIn(app, 'lena@example.org');
+    const id = await createComment(app, lena);
     const url = `/api/comments/${id}/report`;
 
     const responses = await Promise.all(
       Array.from(
         { length: 50 },
-        async () => await app.inject({ method: 'POST', url })
+        async () => await app.inject({ method: 'POST', url, cookies: lena })
       )
     );
     const counts = responses.map(
@@ -262,259 +247,13 @@ describe('reports', () => {
 
   it('answers 404 when reporting an unknown comment', async () => {
     const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
     const res = await app.inject({
       method: 'POST',
+      cookies: lena,
       url: '/api/comments/00000000-0000-4000-8000-000000000000/report',
     });
 
     expect(res.statusCode).toBe(404);
-  });
-});
-
-describe('register', () => {
-  const url = '/api/auth/register';
-  const payload = {
-    email: 'lena@example.org',
-    password: 'correct horse battery staple',
-  };
-
-  it('creates a user and stores only an argon2id hash', async () => {
-    const repos = createMemoryRepos(fixture);
-    const app = await setup(repos);
-    const res = await app.inject({ method: 'POST', url, payload });
-
-    expect(res.statusCode).toBe(201);
-    const user = res.json<Record<string, unknown>>();
-    expect(Object.keys(user).toSorted()).toEqual([
-      'createdAt',
-      'email',
-      'id',
-      'role',
-    ]);
-    expect(user).toMatchObject({ email: 'lena@example.org', role: 'user' });
-    expect(res.body).not.toContain(payload.password);
-
-    const stored = await repos.users.findByEmail('lena@example.org');
-    expect(stored?.passwordHash).toMatch(
-      /^\$argon2id\$v=19\$m=65536,t=3,p=4\$/v
-    );
-    expect(stored?.passwordHash).not.toContain(payload.password);
-  });
-
-  it('salts: the same password gives two different hashes', async () => {
-    const repos = createMemoryRepos(fixture);
-    const app = await setup(repos);
-    await app.inject({ method: 'POST', url, payload });
-    await app.inject({
-      method: 'POST',
-      url,
-      payload: { ...payload, email: 'max@example.org' },
-    });
-
-    const lena = await repos.users.findByEmail('lena@example.org');
-    const max = await repos.users.findByEmail('max@example.org');
-    expect(lena?.passwordHash).not.toBe(max?.passwordHash);
-  });
-
-  it('answers 409 for a duplicate e-mail, also in another case', async () => {
-    const app = await setup();
-    await app.inject({ method: 'POST', url, payload });
-    const res = await app.inject({
-      method: 'POST',
-      url,
-      payload: { ...payload, email: '  Lena@Example.ORG ' },
-    });
-
-    expect(res.statusCode).toBe(409);
-    expect(res.headers['content-type']).toContain('application/problem+json');
-  });
-
-  it('answers 400 for a password shorter than 12 characters', async () => {
-    const app = await setup();
-    const res = await app.inject({
-      method: 'POST',
-      url,
-      payload: { ...payload, password: 'Sh0rt!pw' },
-    });
-
-    expect(res.statusCode).toBe(400);
-    const body = res.json<{ errors: Array<{ path: string }> }>();
-    expect(body.errors.map((e) => e.path)).toEqual(['password']);
-  });
-
-  it('accepts a long password without digits or symbols', async () => {
-    const app = await setup();
-    const res = await app.inject({
-      method: 'POST',
-      url,
-      payload: { ...payload, password: 'only lowercase letters here' },
-    });
-
-    expect(res.statusCode).toBe(201);
-  });
-
-  it('answers 400 for an invalid e-mail address', async () => {
-    const app = await setup();
-    const res = await app.inject({
-      method: 'POST',
-      url,
-      payload: { ...payload, email: 'not-an-email' },
-    });
-
-    expect(res.statusCode).toBe(400);
-  });
-
-  it('rejects a role in the body (mass assignment)', async () => {
-    const app = await setup();
-    const res = await app.inject({
-      method: 'POST',
-      url,
-      payload: { ...payload, role: 'moderator' },
-    });
-
-    expect(res.statusCode).toBe(400);
-  });
-});
-
-describe('login and session', () => {
-  const credentials = {
-    email: 'lena@example.org',
-    password: 'correct horse battery staple',
-  };
-
-  // Registers Lena and returns her session cookie value.
-  async function loginLena(app: FastifyInstance): Promise<string> {
-    await app.inject({
-      method: 'POST',
-      url: '/api/auth/register',
-      payload: credentials,
-    });
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/login',
-      payload: credentials,
-    });
-    expect(res.statusCode).toBe(200);
-    const sid = res.cookies.find((c) => c.name === 'sid');
-    if (sid === undefined) throw new Error('no session cookie');
-    return sid.value;
-  }
-
-  async function me(
-    app: FastifyInstance,
-    sid?: string
-  ): Promise<LightMyRequestResponse> {
-    return await app.inject({
-      method: 'GET',
-      url: '/api/auth/me',
-      cookies: sid === undefined ? {} : { sid },
-    });
-  }
-
-  it('sets an HttpOnly, SameSite=Lax session cookie on login', async () => {
-    const app = await setup();
-    await app.inject({
-      method: 'POST',
-      url: '/api/auth/register',
-      payload: credentials,
-    });
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/login',
-      payload: { ...credentials, email: 'LENA@example.org' },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ email: 'lena@example.org' });
-    const setCookie = String(res.headers['set-cookie']);
-    // Signed with SESSION_SECRET: a forged id fails the signature check.
-    expect(setCookie).toMatch(/^sid=[^;]+;/v);
-    expect(setCookie).toContain('HttpOnly');
-    expect(setCookie).toContain('SameSite=Lax');
-    expect(setCookie).toContain('Path=/');
-    expect(setCookie).toContain('Expires=');
-    // Not in production: browsers would drop it on http://localhost.
-    expect(setCookie).not.toContain('Secure');
-  });
-
-  it('returns the user from /me with the cookie', async () => {
-    const app = await setup();
-    const sid = await loginLena(app);
-    const res = await me(app, sid);
-
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ email: 'lena@example.org' });
-  });
-
-  it('answers 401 as a problem from /me without a cookie', async () => {
-    const app = await setup();
-    const res = await me(app);
-
-    expect(res.statusCode).toBe(401);
-    expect(res.headers['content-type']).toContain('application/problem+json');
-  });
-
-  it('answers 401 from /me for a made-up session id', async () => {
-    const app = await setup();
-    const res = await me(app, 'not-a-real-session');
-
-    expect(res.statusCode).toBe(401);
-  });
-
-  it('invalidates the session on logout, even for a copied cookie', async () => {
-    const app = await setup();
-    const sid = await loginLena(app);
-
-    const out = await app.inject({
-      method: 'POST',
-      url: '/api/auth/logout',
-      cookies: { sid },
-    });
-    expect(out.statusCode).toBe(204);
-    expect(String(out.headers['set-cookie'])).toContain('sid=;');
-
-    // The old cookie value, replayed after logout.
-    const res = await me(app, sid);
-    expect(res.statusCode).toBe(401);
-  });
-
-  it('gives a new session id on every login', async () => {
-    const app = await setup();
-    const first = await loginLena(app);
-    const second = await app.inject({
-      method: 'POST',
-      url: '/api/auth/login',
-      payload: credentials,
-      cookies: { sid: first },
-    });
-    const next = second.cookies.find((c) => c.name === 'sid')?.value;
-
-    expect(next).toBeDefined();
-    expect(next).not.toBe(first);
-    // The replaced session is gone.
-    expect((await me(app, first)).statusCode).toBe(401);
-  });
-
-  it('answers the same 401 for a wrong password and an unknown e-mail', async () => {
-    const app = await setup();
-    await loginLena(app);
-
-    const wrongPassword = await app.inject({
-      method: 'POST',
-      url: '/api/auth/login',
-      payload: { ...credentials, password: 'wrong password here' },
-    });
-    const unknownEmail = await app.inject({
-      method: 'POST',
-      url: '/api/auth/login',
-      payload: { ...credentials, email: 'nobody@example.org' },
-    });
-
-    expect(wrongPassword.statusCode).toBe(401);
-    expect(unknownEmail.statusCode).toBe(401);
-    const a = wrongPassword.json<{ type: string; detail: string }>();
-    const b = unknownEmail.json<{ type: string; detail: string }>();
-    expect([b.type, b.detail]).toEqual([a.type, a.detail]);
-    expect(wrongPassword.headers['set-cookie']).toBeUndefined();
   });
 });

@@ -1,3 +1,4 @@
+import type { Actor } from '../auth/policy.js';
 import type { Comment, CommentCursor, NewComment } from '../schemas/comment.js';
 
 export interface CommentPageRequest {
@@ -21,8 +22,12 @@ export interface CommentRepository {
     page: CommentPageRequest
   ) => Promise<CommentPageResult>;
   listByBears: (bearIds: string[]) => Promise<Map<string, Comment[]>>;
-  create: (bearId: string, input: NewComment) => Promise<Comment>;
-  delete: (id: string) => Promise<boolean>;
+  create: (
+    bearId: string,
+    input: NewComment,
+    authorId: string
+  ) => Promise<Comment>;
+  delete: (id: string, actor: Actor) => Promise<boolean>;
   findById: (
     id: string,
     options?: { lock: boolean }

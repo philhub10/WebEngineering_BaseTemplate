@@ -1,4 +1,4 @@
-import { apiUrl } from './api';
+import { apiUrl, withCookie } from './api';
 import { toApiError } from './problem';
 
 const UNAUTHORIZED = 401;
@@ -15,9 +15,6 @@ export interface Credentials {
   email: string;
   password: string;
 }
-
-// 'include' sends the session cookie also in the cross-origin build.
-const withCookie = { credentials: 'include' } as const;
 
 async function postCredentials(
   path: string,

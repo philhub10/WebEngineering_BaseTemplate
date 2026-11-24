@@ -16,4 +16,5 @@ export interface UserRepository {
   create: (input: NewUser) => Promise<User | null>;
   findByEmail: (email: string) => Promise<User | null>;
   findById: (id: string) => Promise<User | null>;
+  setPasswordHash: (id: string, passwordHash: string) => Promise<void>;
 }

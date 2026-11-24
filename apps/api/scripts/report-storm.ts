@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createDb, createPool } from '../src/db/client.js';
 import { DrizzleCommentRepository } from '../src/repositories/drizzle/comment-repository.js';
@@ -18,9 +19,34 @@ const apiUrl = z
   .parse(process.env.API_URL);
 const naive = process.argv.includes('--naive');
 
-const created = await fetch(`${apiUrl}/api/bears/${BEAR_ID}/comments`, {
+// Reports need a login since Playground 6: a fresh user per run.
+const credentials = {
+  email: `report-storm-${randomUUID()}@example.org`,
+  password: randomUUID(),
+};
+await fetch(`${apiUrl}/api/auth/register`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(credentials),
+});
+const login = await fetch(`${apiUrl}/api/auth/login`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(credentials),
+});
+if (!login.ok) {
+  throw new Error(`login failed: ${login.status}`);
+}
+// "sid=...; Path=/; ..." -> "sid=..."
+const [setCookie] = login.headers.getSetCookie();
+const [cookie] = setCookie?.split(';') ?? [];
+if (cookie === undefined) {
+  throw new Error('login returned no session cookie');
+}
+
+const created = await fetch(`${apiUrl}/api/bears/${BEAR_ID}/comments`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', cookie },
   body: JSON.stringify({ author: 'Report storm', text: 'Please report me' }),
 });
 if (!created.ok) {
@@ -40,7 +66,7 @@ console.log(
 const responses = await Promise.all(
   Array.from(
     { length: REPORTS },
-    async () => await fetch(reportUrl, { method: 'POST' })
+    async () => await fetch(reportUrl, { method: 'POST', headers: { cookie } })
   )
 );
 const statuses = Map.groupBy(responses, (res) => res.status);

@@ -26,4 +26,11 @@ export class MemoryUserRepository implements UserRepository {
     const user = [...this.users.values()].find((u) => u.id === id);
     return await Promise.resolve(user ?? null);
   }
+
+  async setPasswordHash(id: string, passwordHash: string): Promise<void> {
+    const user = await this.findById(id);
+    if (user !== null) {
+      this.users.set(user.email, { ...user, passwordHash });
+    }
+  }
 }

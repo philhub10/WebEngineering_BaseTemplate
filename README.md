@@ -863,6 +863,43 @@ Comments get an `author_id`. Creating a comment requires a login (401 otherwise)
 
 **Theory question:** Authentication versus authorisation, 401 versus 403. Explain RBAC and ownership checks, what an IDOR vulnerability is (OWASP A01 Broken Access Control) and why hiding a button in the client is not a security control.
 
+**curl matrix** (API on `localhost:3000`). Lena (author) and Max (other user) register and log in, the moderator logs in with the password from the seed:
+```bash
+for u in lena max; do
+  curl -s -X POST localhost:3000/api/auth/register -H 'content-type: application/json' -d "{\"email\":\"$u@example.org\",\"password\":\"correct horse battery staple\"}" > /dev/null
+  curl -s -c $u.txt -X POST localhost:3000/api/auth/login -H 'content-type: application/json' -d "{\"email\":\"$u@example.org\",\"password\":\"correct horse battery staple\"}" > /dev/null
+done
+curl -s -c mod.txt -X POST localhost:3000/api/auth/login -H 'content-type: application/json' -d '{"email":"moderator@bears.example","password":"123456789101112"}'
+```
+
+Lena writes two comments:
+```bash
+new_comment() { curl -s -b lena.txt -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -d '{"author":"Lena","text":"Mine"}' | sed -E 's/.*"id":"([^"]+)".*/\1/'; }
+ID=$(new_comment); ID2=$(new_comment)
+```
+
+| Who | Command | Status |
+|---|---|---|
+| anonymous | `curl -i -X DELETE localhost:3000/api/comments/$ID` | 401 |
+| other user | `curl -i -b max.txt -X DELETE localhost:3000/api/comments/$ID` | 403 |
+| author | `curl -i -b lena.txt -X DELETE localhost:3000/api/comments/$ID` | 204 |
+| moderator | `curl -i -b mod.txt -X DELETE localhost:3000/api/comments/$ID2` | 204 |
+
+> **Answer:**
+>
+> **Authentication vs. authorisation:** authentication answers "who are you?": the login checks the password, and `requireAuth` turns the session into `request.user`, otherwise 401. Authorisation answers "what may you do?": the policy decides with the user, the action and the object, otherwise 403.
+>
+> **401 vs. 403:** 401 Unauthorized (historic name) means *not authenticated*: no, an invalid or an expired session. 403 Forbidden means the identity is known, but not allowed.
+>
+> **RBAC and ownership:**
+> * **RBAC** (role-based access control): rights come from a role. A `moderator` may delete every comment.
+> * **Ownership check:** rights come from the relation between user and object. The author may delete *their* comment. This needs the object, so the policy loads the comment first.
+>
+>
+> **IDOR** (Insecure Direct Object Reference, part of A01 Broken Access Control): the API takes an id from the request and acts on that object without checking whether the caller is allowed. The fix is the ownership check on every access by id.
+>
+> **Hiding a button is not a security control:** the client runs on the attacker's machine. A hidden button does not stop `curl`, a request replayed from the Network tab, or `role` changed to `moderator` in DevTools. Hiding is usability.
+
 #### Task 4: Harden the API
 
 Add rate limiting to login and register (429 with `Retry-After`), security headers via `@fastify/helmet`, a strict CORS configuration with credentials, a request body size limit, and zod validation on every input (params, query, body, environment). Secrets (session secret, database password) come only from the environment; commit a `.env.example`, never a `.env`, and add a secret scan (for example gitleaks) to the pre-commit hook or the CI workflow.

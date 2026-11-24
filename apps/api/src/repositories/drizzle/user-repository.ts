@@ -40,4 +40,8 @@ export class DrizzleUserRepository implements UserRepository {
     const [row] = await this.db.select().from(users).where(eq(users.id, id));
     return row === undefined ? null : toUser(row);
   }
+
+  async setPasswordHash(id: string, passwordHash: string): Promise<void> {
+    await this.db.update(users).set({ passwordHash }).where(eq(users.id, id));
+  }
 }

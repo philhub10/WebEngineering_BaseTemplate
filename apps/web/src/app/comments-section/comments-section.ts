@@ -2,9 +2,12 @@ import type { OnDestroy, OnInit } from '@angular/core';
 import {
   ChangeDetectionStrategy,
   Component,
+  inject,
   input,
   signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { AuthState } from '../auth-state';
 import { CommentToggle } from './comment-toggle/comment-toggle';
 import { CommentForm } from './comment-form/comment-form';
 import { CommentList } from './comment-list/comment-list';
@@ -20,12 +23,14 @@ import { errorMessage } from '../problem';
 @Component({
   selector: 'app-comments-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommentToggle, CommentForm, CommentList],
+  imports: [RouterLink, CommentToggle, CommentForm, CommentList],
   templateUrl: './comments-section.html',
 })
 export class CommentsSection implements OnInit, OnDestroy {
   // The bear these comments belong to, e.g. "ursus-arctos".
   readonly bearId = input.required<string>();
+
+  protected readonly auth = inject(AuthState);
 
   protected readonly commentsExpanded = signal(false);
   protected readonly comments = signal<Comment[]>([]);

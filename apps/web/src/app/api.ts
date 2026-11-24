@@ -7,3 +7,7 @@ declare const API_BASE_URL: string;
 export function apiUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
 }
+
+// For requests that need the session cookie. 'include' also sends it in the
+// cross-origin build (same-origin is the fetch default).
+export const withCookie = { credentials: 'include' } as const;

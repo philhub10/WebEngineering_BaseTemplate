@@ -1,5 +1,6 @@
 import { decodeCursor, encodeCursor } from '../cursor.js';
 import { NotFoundError } from '../errors.js';
+import type { Actor, CommentSubject } from '../auth/policy.js';
 import type { CommentReports } from '../repositories/comment-repository.js';
 import type { Repos } from '../repositories/index.js';
 import type {
@@ -30,14 +31,30 @@ export async function listComments(
 export async function createComment(
   repos: Repos,
   bearId: string,
-  input: NewComment
+  input: NewComment,
+  author: Actor
 ): Promise<Comment> {
   await loadBear(repos.bears, bearId);
-  return await repos.comments.create(bearId, input);
+  return await repos.comments.create(bearId, input, author.id);
 }
 
-export async function deleteComment(repos: Repos, id: string): Promise<void> {
-  if (!(await repos.comments.delete(id))) {
+export async function loadCommentSubject(
+  repos: Repos,
+  id: string
+): Promise<CommentSubject> {
+  const comment = await repos.comments.findById(id);
+  if (comment === null) {
+    throw new NotFoundError(`No comment with id "${id}"`);
+  }
+  return comment;
+}
+
+export async function deleteComment(
+  repos: Repos,
+  id: string,
+  actor: Actor
+): Promise<void> {
+  if (!(await repos.comments.delete(id, actor))) {
     throw new NotFoundError(`No comment with id "${id}"`);
   }
 }

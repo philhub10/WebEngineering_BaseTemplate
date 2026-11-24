@@ -9,13 +9,14 @@ services:
       - pgdata:/var/lib/postgresql
     ports: ["${POSTGRES_PORT:-5432}:5432"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 10s
   api:
     build: ./apps/api
+    restart: on-failure
     environment:
       PORT: "3000"
       DATABASE_URL: postgres://${POSTGRES_USER:-bears}:${POSTGRES_PASSWORD:-bears}@db:5432/${POSTGRES_DB:-bears}
@@ -23,6 +24,7 @@ services:
       USER_AGENT: BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)
       CORS_ORIGINS: http://localhost:4173
       ENABLE_DEBUG_ROUTES: "false"
+      SEED_MODERATOR_PASSWORD: ${SEED_MODERATOR_PASSWORD:-}
     ports: ["3000:3000"]
     depends_on:
       db:

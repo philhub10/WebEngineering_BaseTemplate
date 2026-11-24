@@ -1,9 +1,10 @@
-import { apiUrl } from './api';
+import { apiUrl, withCookie } from './api';
 import { toApiError } from './problem';
 
 export interface Comment {
   id: string;
   bearId: string;
+  authorId: string | null;
   author: string;
   text: string;
   createdAt: string;
@@ -46,6 +47,7 @@ export async function createComment(
   const res = await fetch(
     apiUrl(`/api/bears/${encodeURIComponent(bearId)}/comments`),
     {
+      ...withCookie,
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(newComment),
@@ -60,6 +62,7 @@ export async function createComment(
 
 export async function deleteComment(id: string): Promise<void> {
   const res = await fetch(apiUrl(`/api/comments/${encodeURIComponent(id)}`), {
+    ...withCookie,
     method: 'DELETE',
   });
   if (!res.ok) {
@@ -70,7 +73,7 @@ export async function deleteComment(id: string): Promise<void> {
 export async function reportComment(id: string): Promise<Comment> {
   const res = await fetch(
     apiUrl(`/api/comments/${encodeURIComponent(id)}/report`),
-    { method: 'POST' }
+    { ...withCookie, method: 'POST' }
   );
   if (!res.ok) {
     throw await toApiError(res);

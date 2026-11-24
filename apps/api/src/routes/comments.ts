@@ -1,6 +1,8 @@
 import type { FastifyPluginCallback } from 'fastify';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
+import { authorize } from '../auth/authorize.js';
+import { authenticatedUser, requireAuth } from '../plugins/auth.js';
 import { BearId } from '../schemas/bear.js';
 import {
   Comment,
@@ -13,6 +15,7 @@ import {
   createComment,
   deleteComment,
   listComments,
+  loadCommentSubject,
   reportComment,
 } from '../services/comments.js';
 
@@ -40,6 +43,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
   api.post(
     '/api/bears/:id/comments',
     {
+      preHandler: [requireAuth, authorize('comment:create')],
       schema: {
         params: z.object({ id: BearId }),
         body: NewComment,
@@ -50,7 +54,8 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       const comment = await createComment(
         app.repos,
         request.params.id,
-        request.body
+        request.body,
+        authenticatedUser(request)
       );
       return await reply
         .code(CREATED)
@@ -62,6 +67,14 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
   api.delete(
     '/api/comments/:commentId',
     {
+      preHandler: [
+        requireAuth,
+        authorize(
+          'comment:delete',
+          async (request) =>
+            await loadCommentSubject(app.repos, request.params.commentId)
+        ),
+      ],
       schema: {
         params: z.object({ commentId: z.uuid('must be a UUID') }),
         response: {
@@ -71,7 +84,11 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       },
     },
     async (request, reply) => {
-      await deleteComment(app.repos, request.params.commentId);
+      await deleteComment(
+        app.repos,
+        request.params.commentId,
+        authenticatedUser(request)
+      );
       return await reply.code(NO_CONTENT).send(null);
     }
   );
@@ -79,6 +96,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
   api.post(
     '/api/comments/:commentId/report',
     {
+      preHandler: [requireAuth, authorize('comment:report')],
       schema: {
         params: z.object({ commentId: z.uuid('must be a UUID') }),
         response: { [OK]: Comment, ...problemResponses },

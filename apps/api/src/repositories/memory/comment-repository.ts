@@ -4,6 +4,7 @@ import type {
   CommentCursor,
   NewComment,
 } from '../../schemas/comment.js';
+import type { Actor } from '../../auth/policy.js';
 import type {
   CommentPageRequest,
   CommentPageResult,
@@ -65,10 +66,15 @@ export class MemoryCommentRepository implements CommentRepository {
     );
   }
 
-  async create(bearId: string, input: NewComment): Promise<Comment> {
+  async create(
+    bearId: string,
+    input: NewComment,
+    authorId: string
+  ): Promise<Comment> {
     const comment: Comment = {
       id: randomUUID(),
       bearId,
+      authorId,
       author: input.author,
       text: input.text,
       createdAt: new Date().toISOString(),
@@ -79,7 +85,14 @@ export class MemoryCommentRepository implements CommentRepository {
     return await Promise.resolve(comment);
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, actor: Actor): Promise<boolean> {
+    const comment = this.comments.get(id);
+    if (
+      comment === undefined ||
+      (actor.role !== 'moderator' && comment.authorId !== actor.id)
+    ) {
+      return false;
+    }
     return await Promise.resolve(this.comments.delete(id));
   }
 

@@ -35,8 +35,11 @@ export const comments = pgTable(
       .notNull()
       .references(() => bears.id, { onDelete: 'cascade' }),
     author: text('author').notNull(),
+    // null for comments from before Playground 6: only moderators delete them.
+    authorId: uuid('author_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     text: text('text').notNull(),
-    // Milliseconds like a JavaScript Date, so a cursor matches exactly.
     createdAt: timestamp('created_at', {
       withTimezone: true,
       precision: MILLISECOND_PRECISION,
