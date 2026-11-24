@@ -33,6 +33,19 @@ export const RegisterBody = z.strictObject({
 
 export type RegisterBody = z.infer<typeof RegisterBody>;
 
+export const LoginBody = z.strictObject({
+  email: Email,
+  password: z
+    .string('must be a string')
+    .nonempty('must not be empty')
+    .max(
+      MAX_PASSWORD_LENGTH,
+      `must be at most ${MAX_PASSWORD_LENGTH} characters`
+    ),
+});
+
+export type LoginBody = z.infer<typeof LoginBody>;
+
 // What the API returns about a user: never the password hash.
 export const PublicUser = z.object({
   id: z.uuid(),

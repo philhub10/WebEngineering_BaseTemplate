@@ -7,6 +7,7 @@
     @if (registered(); as email) {
       <p>
         Your account <b>{{ email }}</b> has been created.
+        <a routerLink="/login">Log in now</a>.
       </p>
     } @else {
       @if (errorMessage(); as message) {

@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import argon2 from 'argon2';
-import { ConflictError } from '../errors.js';
+import { ConflictError, UnauthorizedError } from '../errors.js';
 import type { Repos } from '../repositories/index.js';
 import type { User } from '../repositories/user-repository.js';
-import type { PublicUser, RegisterBody } from '../schemas/auth.js';
+import type { LoginBody, PublicUser, RegisterBody } from '../schemas/auth.js';
 
 // argon2id with the second recommended option of RFC 9106 (also the
 // node-argon2 defaults), written out so a change is a visible decision.
@@ -47,6 +48,25 @@ export async function registerUser(
     // A deliberate trade-off: honest to the user, but it reveals that the
     // address is registered
     throw new ConflictError('An account with this e-mail address exists.');
+  }
+  return toPublicUser(user);
+}
+
+// Verified when the e-mail is unknown, so both cases take equally long.
+const dummyHash = hashPassword(randomUUID());
+
+// Same 401 for an unknown e-mail and a wrong password: no enumeration.
+export async function authenticate(
+  repos: Repos,
+  input: LoginBody
+): Promise<PublicUser> {
+  const user = await repos.users.findByEmail(input.email);
+  const valid = await argon2.verify(
+    user?.passwordHash ?? (await dummyHash),
+    input.password
+  );
+  if (user === null || !valid) {
+    throw new UnauthorizedError('Invalid e-mail or password.');
   }
   return toPublicUser(user);
 }

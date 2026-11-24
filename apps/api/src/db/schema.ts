@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -91,4 +92,20 @@ export const users = pgTable(
       sql`${table.passwordHash} LIKE '$argon2%'`
     ),
   ]
+);
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    // The store id from the (signed) cookie.
+    sid: text('sid').primaryKey(),
+    // The whole @fastify/session object: userId, cookie, generation.
+    sess: jsonb('sess').notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      precision: MILLISECOND_PRECISION,
+    }).notNull(),
+  },
+  // For the cleanup of expired rows.
+  (table) => [index('sessions_expires_idx').on(table.expiresAt)]
 );

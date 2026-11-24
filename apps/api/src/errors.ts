@@ -14,6 +14,13 @@ export class BadRequestError extends AppError {
   readonly title = 'Bad request';
 }
 
+export class UnauthorizedError extends AppError {
+  override name = 'UnauthorizedError';
+  readonly status = 401;
+  readonly type = `${PROBLEM_BASE}/unauthenticated`;
+  readonly title = 'Authentication required';
+}
+
 export class NotFoundError extends AppError {
   override name = 'NotFoundError';
   readonly status = 404;

@@ -15,4 +15,5 @@ export interface UserRepository {
   // null if the e-mail address is already taken.
   create: (input: NewUser) => Promise<User | null>;
   findByEmail: (email: string) => Promise<User | null>;
+  findById: (id: string) => Promise<User | null>;
 }

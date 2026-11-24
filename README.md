@@ -834,6 +834,27 @@ Implement `POST /api/auth/login`, `POST /api/auth/logout` and `GET /api/auth/me`
 
 **Theory question:** Compare session cookies and JWTs regarding revocation, statelessness, size and storage in the browser. What does an XSS attacker get in each case, and how does `SameSite` relate to CSRF?
 
+**ADR 001: Server-side sessions instead of JWT** (24.11.2026, accepted)
+* **Context:** an Angular SPA with its own backend (`apps/api`), served from the same origin (dev proxy, nginx). PostgreSQL already exists. Logout must end the session immediately, not when a token expires.
+* **Options:** (1) server-side session: random id in an `HttpOnly` cookie, sessions in PostgreSQL. (2) JWT: signed claims, no store, but logout needs a blocklist or short lifetimes with refresh tokens.
+* **Decision:** (1) with `@fastify/cookie` and `@fastify/session`. The cookie `sid` carries the session id, signed with `SESSION_SECRET`. The table `sessions` (`sid`, `sess` jsonb, `expires_at`) is the store: a small adapter (`plugins/session.ts`) maps the library's callback interface onto a `SessionRepository`. Lifetime 8 h.
+* **Consequences:** logout is a `DELETE` of one row and takes effect immediately; `regenerate()` on login prevents session fixation; JavaScript cannot read the credential. In exchange every authenticated request costs one lookup of the session and one of the user, expired rows need a cleanup job, the store depends on the library's internal generation key, and a frontend on another origin needs `credentials: 'include'` plus CORS with `credentials: true`. Without `SESSION_SECRET` (allowed outside production only) a random secret is used and logins end on restart.
+
+> **Answer:**
+>
+> * **Revocation:** a session is a row in the database: logout deletes it, and the next request with that cookie gets a 401. A JWT stays valid until its `exp`, because the server only checks the signature. Logging out needs a blocklist (which is state again) or short lifetimes with refresh tokens.
+> * **Statelessness:** a JWT can be checked by any service that has the key, without a database. A session needs a lookup on every request.
+> * **Size:** the session cookie only carries a signed id (about 160 characters), whatever the session holds stays on the server. A JWT carries its claims and signature, so several hundred bytes up to kilobytes on every request (the cookie limit is 4 KB).
+> * **Storage in the browser:** the session id sits in an `HttpOnly` cookie, which JavaScript cannot read. A JWT ends up in `localStorage` (readable by every script), in memory (lost on reload) or in an `HttpOnly` cookie (then it works like a session cookie, but without revocation).
+>
+> **What an XSS attacker gets:**
+> * **`HttpOnly` session cookie:** the attacker cannot read the id. Their script can still send requests as the user, because the browser attaches the cookie, but only while the tab is open. After logout, nothing is left.
+> * **JWT in `localStorage`:** the attacker copies the token and uses it from anywhere until it expires.
+>
+> No variant is XSS-proof; the cookie limits the damage to the open session.
+>
+> **`SameSite` and CSRF:** CSRF works because the browser attaches cookies by itself, even when a foreign page triggers the request (e.g. an auto-submitting form). With `SameSite=Lax` a cross-site `POST` arrives without the cookie and gets a 401; only top-level `GET` navigations (clicking a link) still carry it, so `GET` must never change state. A JWT in an `Authorization` header is never attached automatically, so it is not open to CSRF, but it is exposed to XSS.
+
 #### Task 3: Authorisation for comments
 
 Comments get an `author_id`. Creating a comment requires a login (401 otherwise); deleting is allowed for the author and for users with the role `moderator` (403 otherwise). Seed one moderator. Enforce the rules in one place on the server (a `preHandler` or a policy function) and let the UI only reflect them by hiding the delete button where the call would fail.

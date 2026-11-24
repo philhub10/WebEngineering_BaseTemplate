@@ -10,7 +10,7 @@ const corsConfig: FastifyPluginAsync = async (app) => {
     methods: ['GET', 'POST', 'DELETE'],
     allowedHeaders: ['content-type', 'x-request-id'],
     exposedHeaders: ['location', 'x-request-id'],
-    credentials: false,
+    credentials: true,
     maxAge: PREFLIGHT_MAX_AGE_SECONDS,
   });
 };

@@ -21,4 +21,9 @@ export class MemoryUserRepository implements UserRepository {
   async findByEmail(email: string): Promise<User | null> {
     return await Promise.resolve(this.users.get(email) ?? null);
   }
+
+  async findById(id: string): Promise<User | null> {
+    const user = [...this.users.values()].find((u) => u.id === id);
+    return await Promise.resolve(user ?? null);
+  }
 }

@@ -4,7 +4,15 @@
     <li><a href="#">Our team</a></li>
     <li><a href="#">Projects</a></li>
     <li><a href="#">Blog</a></li>
-    <li><a routerLink="/register">Register</a></li>
+    @if (auth.user(); as user) {
+      <li class="current-user">
+        <span>{{ user.email }}</span>
+        <button type="button" (click)="onLogout()">Log out</button>
+      </li>
+    } @else {
+      <li><a routerLink="/login">Log in</a></li>
+      <li><a routerLink="/register">Register</a></li>
+    }
   </ul>
 
   <app-search-form />

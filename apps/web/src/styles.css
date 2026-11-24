@@ -119,6 +119,18 @@ div[class='nav'] a {
   color: black;
 }
 
+div[class='nav'] .current-user {
+  font-size: 1.6rem;
+}
+
+div[class='nav'] .current-user button {
+  margin-left: 1rem;
+  background: #333;
+  border: 0;
+  color: white;
+  cursor: pointer;
+}
+
 div[class='nav'] .search {
   flex: 1;
   display: flex;

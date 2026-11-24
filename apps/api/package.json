@@ -21,7 +21,9 @@
     "report:storm": "tsx --env-file-if-exists=../../.env scripts/report-storm.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.3.1",
+    "@fastify/session": "^11.2.1",
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",
     "@fastify/type-provider-zod": "^1.0.3",

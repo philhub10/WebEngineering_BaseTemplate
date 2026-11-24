@@ -1,5 +1,5 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { createMemoryRepos } from '../src/repositories/memory/index.js';
 import type { Repos } from '../src/repositories/index.js';
@@ -373,5 +373,148 @@ describe('register', () => {
     });
 
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('login and session', () => {
+  const credentials = {
+    email: 'lena@example.org',
+    password: 'correct horse battery staple',
+  };
+
+  // Registers Lena and returns her session cookie value.
+  async function loginLena(app: FastifyInstance): Promise<string> {
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: credentials,
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: credentials,
+    });
+    expect(res.statusCode).toBe(200);
+    const sid = res.cookies.find((c) => c.name === 'sid');
+    if (sid === undefined) throw new Error('no session cookie');
+    return sid.value;
+  }
+
+  async function me(
+    app: FastifyInstance,
+    sid?: string
+  ): Promise<LightMyRequestResponse> {
+    return await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      cookies: sid === undefined ? {} : { sid },
+    });
+  }
+
+  it('sets an HttpOnly, SameSite=Lax session cookie on login', async () => {
+    const app = await setup();
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: credentials,
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { ...credentials, email: 'LENA@example.org' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ email: 'lena@example.org' });
+    const setCookie = String(res.headers['set-cookie']);
+    // Signed with SESSION_SECRET: a forged id fails the signature check.
+    expect(setCookie).toMatch(/^sid=[^;]+;/v);
+    expect(setCookie).toContain('HttpOnly');
+    expect(setCookie).toContain('SameSite=Lax');
+    expect(setCookie).toContain('Path=/');
+    expect(setCookie).toContain('Expires=');
+    // Not in production: browsers would drop it on http://localhost.
+    expect(setCookie).not.toContain('Secure');
+  });
+
+  it('returns the user from /me with the cookie', async () => {
+    const app = await setup();
+    const sid = await loginLena(app);
+    const res = await me(app, sid);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ email: 'lena@example.org' });
+  });
+
+  it('answers 401 as a problem from /me without a cookie', async () => {
+    const app = await setup();
+    const res = await me(app);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+  });
+
+  it('answers 401 from /me for a made-up session id', async () => {
+    const app = await setup();
+    const res = await me(app, 'not-a-real-session');
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('invalidates the session on logout, even for a copied cookie', async () => {
+    const app = await setup();
+    const sid = await loginLena(app);
+
+    const out = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      cookies: { sid },
+    });
+    expect(out.statusCode).toBe(204);
+    expect(String(out.headers['set-cookie'])).toContain('sid=;');
+
+    // The old cookie value, replayed after logout.
+    const res = await me(app, sid);
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('gives a new session id on every login', async () => {
+    const app = await setup();
+    const first = await loginLena(app);
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: credentials,
+      cookies: { sid: first },
+    });
+    const next = second.cookies.find((c) => c.name === 'sid')?.value;
+
+    expect(next).toBeDefined();
+    expect(next).not.toBe(first);
+    // The replaced session is gone.
+    expect((await me(app, first)).statusCode).toBe(401);
+  });
+
+  it('answers the same 401 for a wrong password and an unknown e-mail', async () => {
+    const app = await setup();
+    await loginLena(app);
+
+    const wrongPassword = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { ...credentials, password: 'wrong password here' },
+    });
+    const unknownEmail = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { ...credentials, email: 'nobody@example.org' },
+    });
+
+    expect(wrongPassword.statusCode).toBe(401);
+    expect(unknownEmail.statusCode).toBe(401);
+    const a = wrongPassword.json<{ type: string; detail: string }>();
+    const b = unknownEmail.json<{ type: string; detail: string }>();
+    expect([b.type, b.detail]).toEqual([a.type, a.detail]);
+    expect(wrongPassword.headers['set-cookie']).toBeUndefined();
   });
 });

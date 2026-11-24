@@ -7,10 +7,12 @@ import {
   validatorCompiler,
 } from '@fastify/type-provider-zod';
 import { z } from 'zod';
+import { authPlugin } from './plugins/auth.js';
 import { configPlugin } from './plugins/config.js';
 import { corsPlugin } from './plugins/cors.js';
 import { dbPlugin } from './plugins/db.js';
 import { repositoriesPlugin } from './plugins/repositories.js';
+import { sessionPlugin } from './plugins/session.js';
 import { swaggerPlugin } from './plugins/swagger.js';
 import { PROBLEM_CONTENT_TYPE, problem, toProblem } from './problem.js';
 import type { Repos } from './repositories/index.js';
@@ -72,6 +74,8 @@ export function buildApp(
   void app.register(configPlugin);
   void app.register(dbPlugin);
   void app.register(repositoriesPlugin, { repos: dependencies.repos });
+  void app.register(sessionPlugin);
+  void app.register(authPlugin);
   void app.register(corsPlugin);
   void app.register(swaggerPlugin);
   void app.register(healthRoutes);

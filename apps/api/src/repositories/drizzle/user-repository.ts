@@ -35,4 +35,9 @@ export class DrizzleUserRepository implements UserRepository {
       .where(eq(users.email, email));
     return row === undefined ? null : toUser(row);
   }
+
+  async findById(id: string): Promise<User | null> {
+    const [row] = await this.db.select().from(users).where(eq(users.id, id));
+    return row === undefined ? null : toUser(row);
+  }
 }
