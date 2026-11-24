@@ -65,3 +65,30 @@ export const comments = pgTable(
     check('comments_report_count_non_negative', sql`${table.reportCount} >= 0`),
   ]
 );
+
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash').notNull(),
+    role: text('role', { enum: ['user', 'moderator'] })
+      .notNull()
+      .default('user'),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      precision: MILLISECOND_PRECISION,
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check('users_role_valid', sql`${table.role} IN ('user', 'moderator')`),
+    check(
+      'users_password_hash_argon2',
+      sql`${table.passwordHash} LIKE '$argon2%'`
+    ),
+  ]
+);

@@ -1,0 +1,53 @@
+<main>
+  <article>
+    <p><a routerLink="/">&larr; Back to all bears</a></p>
+
+    <font size="6">Create an account</font>
+
+    @if (registered(); as email) {
+      <p>
+        Your account <b>{{ email }}</b> has been created.
+      </p>
+    } @else {
+      @if (errorMessage(); as message) {
+        <p class="error-message">{{ message }}</p>
+      }
+      <form class="comment-form" (submit)="onSubmit($event)">
+        <div class="flex-pair">
+          <label for="register-email">E-mail:</label>
+          <input
+            type="email"
+            name="email"
+            id="register-email"
+            autocomplete="email"
+            required
+            maxlength="254"
+            [value]="email()"
+            (input)="onEmailInput($event)"
+          />
+        </div>
+        <div class="flex-pair">
+          <label for="register-password">Password:</label>
+          <input
+            type="password"
+            name="password"
+            id="register-password"
+            autocomplete="new-password"
+            required
+            [minLength]="minPasswordLength"
+            maxlength="128"
+            [value]="password()"
+            (input)="onPasswordInput($event)"
+          />
+        </div>
+        <p>
+          At least {{ minPasswordLength }} characters. A long passphrase is
+          best; digits or symbols are not required.
+        </p>
+        <div>
+          <input type="submit" value="Register" [disabled]="submitting()" />
+        </div>
+      </form>
+    }
+  </article>
+</main>

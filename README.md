@@ -812,6 +812,20 @@ Add a `users` table via migration (id, email unique, password_hash, role, create
 
 **Theory question:** Why hash instead of encrypt, what do salt and work factor do, and why is a deliberately slow hash a feature? Why do current guidelines (NIST SP 800-63B) prefer length over composition rules? What is the trade-off between a clear 409 and user enumeration?
 
+> **Answer:**
+>
+> **Hash instead of encrypt:** encryption can be reversed by whoever has the key. A hash is one-way: the server never needs the password again, at login it only hashes the attempt and compares (`argon2.verify`). A leaked dump contains no passwords.
+>
+> **Salt:** 16 random bytes per password, stored in the PHC string next to the hash (`$argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>`). The same password gives a different hash for every user, so precomputed tables are useless and every hash has to be cracked on its own.
+>
+> **Work factor:** the parameters set how expensive one hash is: memory (`m=65536` KiB = 64 MiB), iterations (`t=3`) and lanes (`p=4`). argon2id is memory-hard, so GPUs and special hardware gain little.
+>
+> **Slow hash as a feature:** a login costs the server one hash. An attacker with a leaked dump pays the same price for *every* guess. With SHA-256 a GPU tries billions of passwords per second, with argon2id only a few dozen.
+>
+> **Length over composition rules (NIST SP 800-63B):** rules like "one digit, one symbol" make users predictable (`Password` → `Password1!`) and add little entropy. Every extra character multiplies the search space, and a long passphrase is still easy to remember.
+>
+> **409 vs. user enumeration:** a clear 409 is honest: the user knows to log in instead of trying again. But it also tells anyone that this address has an account, which helps phishing and credential stuffing. The alternative is to always answer the same ("check your e-mail"). Here the 409 is a deliberate trade-off; the rate limit on register (Task 4) keeps mass checking expensive, and the login will answer the same 401 for an unknown e-mail and a wrong password.
+
 #### Task 2: Login and session, with a written decision
 
 Implement `POST /api/auth/login`, `POST /api/auth/logout` and `GET /api/auth/me`. Decide between a server-side session (cookie with a session id, sessions stored in PostgreSQL) and a JWT, and write the decision as a ten-line ADR in your README (context, options, decision, consequences). Whatever you choose, set the cookie flags correctly (`HttpOnly`, `Secure` in production, `SameSite=Lax`, `Path`) and make logout actually invalidate the credential. The React app shows the logged-in user and a logout button.

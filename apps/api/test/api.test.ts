@@ -2,6 +2,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { createMemoryRepos } from '../src/repositories/memory/index.js';
+import type { Repos } from '../src/repositories/index.js';
 import type { Bear } from '../src/schemas/bear.js';
 
 interface CommentPageBody {
@@ -27,8 +28,10 @@ const fixture: Bear[] = [
 ];
 
 // A fresh app with in-memory repositories per test: no database needed.
-async function setup(): Promise<FastifyInstance> {
-  const app = buildApp({}, { repos: createMemoryRepos(fixture) });
+async function setup(
+  repos: Repos = createMemoryRepos(fixture)
+): Promise<FastifyInstance> {
+  const app = buildApp({}, { repos });
   await app.ready();
   onTestFinished(async () => {
     await app.close();
@@ -265,5 +268,110 @@ describe('reports', () => {
     });
 
     expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('register', () => {
+  const url = '/api/auth/register';
+  const payload = {
+    email: 'lena@example.org',
+    password: 'correct horse battery staple',
+  };
+
+  it('creates a user and stores only an argon2id hash', async () => {
+    const repos = createMemoryRepos(fixture);
+    const app = await setup(repos);
+    const res = await app.inject({ method: 'POST', url, payload });
+
+    expect(res.statusCode).toBe(201);
+    const user = res.json<Record<string, unknown>>();
+    expect(Object.keys(user).toSorted()).toEqual([
+      'createdAt',
+      'email',
+      'id',
+      'role',
+    ]);
+    expect(user).toMatchObject({ email: 'lena@example.org', role: 'user' });
+    expect(res.body).not.toContain(payload.password);
+
+    const stored = await repos.users.findByEmail('lena@example.org');
+    expect(stored?.passwordHash).toMatch(
+      /^\$argon2id\$v=19\$m=65536,t=3,p=4\$/v
+    );
+    expect(stored?.passwordHash).not.toContain(payload.password);
+  });
+
+  it('salts: the same password gives two different hashes', async () => {
+    const repos = createMemoryRepos(fixture);
+    const app = await setup(repos);
+    await app.inject({ method: 'POST', url, payload });
+    await app.inject({
+      method: 'POST',
+      url,
+      payload: { ...payload, email: 'max@example.org' },
+    });
+
+    const lena = await repos.users.findByEmail('lena@example.org');
+    const max = await repos.users.findByEmail('max@example.org');
+    expect(lena?.passwordHash).not.toBe(max?.passwordHash);
+  });
+
+  it('answers 409 for a duplicate e-mail, also in another case', async () => {
+    const app = await setup();
+    await app.inject({ method: 'POST', url, payload });
+    const res = await app.inject({
+      method: 'POST',
+      url,
+      payload: { ...payload, email: '  Lena@Example.ORG ' },
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.headers['content-type']).toContain('application/problem+json');
+  });
+
+  it('answers 400 for a password shorter than 12 characters', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'POST',
+      url,
+      payload: { ...payload, password: 'Sh0rt!pw' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json<{ errors: Array<{ path: string }> }>();
+    expect(body.errors.map((e) => e.path)).toEqual(['password']);
+  });
+
+  it('accepts a long password without digits or symbols', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'POST',
+      url,
+      payload: { ...payload, password: 'only lowercase letters here' },
+    });
+
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('answers 400 for an invalid e-mail address', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'POST',
+      url,
+      payload: { ...payload, email: 'not-an-email' },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects a role in the body (mass assignment)', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'POST',
+      url,
+      payload: { ...payload, role: 'moderator' },
+    });
+
+    expect(res.statusCode).toBe(400);
   });
 });

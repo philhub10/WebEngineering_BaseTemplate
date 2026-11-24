@@ -21,6 +21,13 @@ export class NotFoundError extends AppError {
   readonly title = 'Resource not found';
 }
 
+export class ConflictError extends AppError {
+  override name = 'ConflictError';
+  readonly status = 409;
+  readonly type = `${PROBLEM_BASE}/conflict`;
+  readonly title = 'Conflict';
+}
+
 export class UpstreamError extends AppError {
   override name = 'UpstreamError';
   readonly status = 502;

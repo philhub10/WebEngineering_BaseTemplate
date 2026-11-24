@@ -14,6 +14,7 @@ import { repositoriesPlugin } from './plugins/repositories.js';
 import { swaggerPlugin } from './plugins/swagger.js';
 import { PROBLEM_CONTENT_TYPE, problem, toProblem } from './problem.js';
 import type { Repos } from './repositories/index.js';
+import { authRoutes } from './routes/auth.js';
 import { bearRoutes } from './routes/bears.js';
 import { commentRoutes } from './routes/comments.js';
 import { debugRoutes } from './routes/debug.js';
@@ -74,6 +75,7 @@ export function buildApp(
   void app.register(corsPlugin);
   void app.register(swaggerPlugin);
   void app.register(healthRoutes);
+  void app.register(authRoutes);
   void app.register(bearRoutes);
   void app.register(commentRoutes);
   void app.register(debugRoutes);
