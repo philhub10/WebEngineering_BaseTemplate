@@ -945,6 +945,11 @@ curl -i -b lena.txt -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'c
 
 **Secrets only from the environment:** no password or secret is in git. `.env.example` is committed with placeholders, the real `.env` is gitignored.
 
+**Secret scan (gitleaks):** the CI job `secrets` scans the whole git history on every push and pull request. The pre-commit hook scans the staged changes before each commit.
+```bash
+gitleaks git --redact
+```
+
 
 #### Task 5: Security review and one attack test
 
