@@ -10,6 +10,7 @@ import {
   CommentsQuery,
   NewComment,
 } from '../schemas/comment.js';
+import { NoBody } from '../schemas/no-body.js';
 import { problemResponses } from '../schemas/problem.js';
 import {
   createComment,
@@ -77,6 +78,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       ],
       schema: {
         params: z.object({ commentId: z.uuid('must be a UUID') }),
+        body: NoBody,
         response: {
           [NO_CONTENT]: z.null().describe('Comment deleted'),
           ...problemResponses,
@@ -99,6 +101,7 @@ export const commentRoutes: FastifyPluginCallback = (app, _options, done) => {
       preHandler: [requireAuth, authorize('comment:report')],
       schema: {
         params: z.object({ commentId: z.uuid('must be a UUID') }),
+        body: NoBody,
         response: { [OK]: Comment, ...problemResponses },
       },
     },

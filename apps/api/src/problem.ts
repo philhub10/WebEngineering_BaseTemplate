@@ -57,7 +57,10 @@ export function toProblem(err: unknown, request: FastifyRequest): Problem {
       type: `${PROBLEM_BASE}/validation`,
       title: 'Invalid request',
       status: BAD_REQUEST,
-      detail: errors.map((e) => `${e.path} ${e.message}`).join('; '),
+      // Body-level errors (unknown key, body not allowed) have no path.
+      detail: errors
+        .map((e) => (e.path === '' ? e.message : `${e.path} ${e.message}`))
+        .join('; '),
       instance: instanceOf(request),
       errors,
     };

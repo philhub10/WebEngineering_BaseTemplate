@@ -938,6 +938,11 @@ curl -i -X OPTIONS localhost:3000/api/comments/00000000-0000-4000-8000-000000000
 curl -i -X POST localhost:3000/api/auth/register -H 'content-type: application/json' --data-binary "{\"password\":\"$(head -c 20000 /dev/zero | tr '\0' x)\"}"
 ```
 
+**zod on every input:** All bodies are strict: an unknown field such as `authorId` in a comment is a 400, not silently dropped (mass assignment). Routes without input (`logout`, `report`, `DELETE` comment) reject any body. Router errors (malformed URL, a param over 100 characters) are rendered as problems as well.
+```bash
+curl -i -b lena.txt -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -d '{"author":"Lena","text":"Hi","authorId":"00000000-0000-4000-8000-000000000000"}'
+```
+
 
 #### Task 5: Security review and one attack test
 

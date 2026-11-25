@@ -154,3 +154,65 @@ describe('body limit', () => {
     expect(res.statusCode).toBe(201);
   });
 });
+
+describe('input validation', () => {
+  it('rejects unknown fields in a comment (mass assignment)', async () => {
+    const app = await setup();
+    const lena = await signIn(app, 'lena@example.org');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/bears/ursus-arctos/comments',
+      cookies: lena,
+      payload: {
+        author: 'Lena',
+        text: 'Hi',
+        authorId: '00000000-0000-4000-8000-000000000000',
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json<{ detail: string }>().detail).toContain('authorId');
+  });
+
+  // Fastify's router already stops params over 100 characters with 414
+  // (maxParamLength); BearId.max(100) states the same limit in the contract.
+  it('rejects a bear id longer than 100 characters', async () => {
+    const app = await setup();
+    const tooLong = await app.inject({
+      method: 'GET',
+      url: `/api/bears/${'a'.repeat(101)}`,
+    });
+    const longest = await app.inject({
+      method: 'GET',
+      url: `/api/bears/${'a'.repeat(100)}`,
+    });
+
+    expect(tooLong.statusCode).toBe(414);
+    expect(tooLong.headers['content-type']).toContain(
+      'application/problem+json'
+    );
+    expect(tooLong.headers['x-request-id']).toEqual(expect.any(String));
+    expect(longest.statusCode).toBe(404); // valid id, unknown bear
+  });
+
+  it('rejects a body on routes that take none', async () => {
+    const app = await setup();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      payload: { anything: true },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json<{ detail: string }>().detail).toBe(
+      'the request body must be empty'
+    );
+  });
+
+  it('still generates the OpenAPI document', async () => {
+    const app = await setup();
+    const res = await app.inject({ method: 'GET', url: '/api/docs/json' });
+
+    expect(res.statusCode).toBe(200);
+  });
+});

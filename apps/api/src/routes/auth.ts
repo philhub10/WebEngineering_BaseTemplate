@@ -5,6 +5,7 @@ import { authenticatedUser, requireAuth } from '../plugins/auth.js';
 import { loginRateLimit, registerRateLimit } from '../plugins/rate-limit.js';
 import { SESSION_COOKIE } from '../plugins/session.js';
 import { LoginBody, PublicUser, RegisterBody } from '../schemas/auth.js';
+import { NoBody } from '../schemas/no-body.js';
 import { problemResponses } from '../schemas/problem.js';
 import { authenticate, registerUser } from '../services/auth.js';
 
@@ -52,6 +53,7 @@ export const authRoutes: FastifyPluginCallback = (app, _options, done) => {
     '/api/auth/logout',
     {
       schema: {
+        body: NoBody,
         response: {
           [NO_CONTENT]: z.null().describe('Logged out'),
           ...problemResponses,

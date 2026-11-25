@@ -1,6 +1,7 @@
 import type { FastifyPluginCallback } from 'fastify';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
+import { NoBody } from '../schemas/no-body.js';
 import { reportCommentNaive } from '../services/comments.js';
 
 // Routes to provoke errors by hand, only registered when ENABLE_DEBUG_ROUTES=true.
@@ -21,6 +22,7 @@ export const debugRoutes: FastifyPluginCallback = (app, _options, done) => {
         schema: {
           hide: true,
           params: z.object({ commentId: z.uuid('must be a UUID') }),
+          body: NoBody,
         },
       },
       async (request) => {

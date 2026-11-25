@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import Fastify from 'fastify';
-import type { FastifyInstance, FastifyServerOptions } from 'fastify';
+import type {
+  FastifyError,
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  FastifyServerOptions,
+} from 'fastify';
 import {
   serializerCompiler,
   validatorCompiler,
@@ -35,6 +41,21 @@ function genReqId(request: IncomingMessage): string {
   return result.success ? result.data : randomUUID();
 }
 
+// Router errors (malformed URL, param over 100 characters) bypass the error
+// handler and all hooks; this renders them as problems with a request id too.
+function sendFrameworkError(
+  err: FastifyError,
+  request: FastifyRequest,
+  reply: FastifyReply
+): void {
+  const body = toProblem(err, request);
+  void reply
+    .code(body.status)
+    .header(REQUEST_ID_HEADER, request.id)
+    .type(PROBLEM_CONTENT_TYPE)
+    .send(body);
+}
+
 export interface AppDependencies {
   repos?: Repos;
 }
@@ -48,6 +69,7 @@ export function buildApp(
     ...options,
     requestIdHeader: false,
     genReqId,
+    frameworkErrors: sendFrameworkError,
   });
 
   // Route schemas are written with zod instead of JSON Schema.

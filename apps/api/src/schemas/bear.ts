@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
+const MAX_BEAR_ID_LENGTH = 100;
+
 // e.g. "ursus-arctos": lowercase words joined by hyphens
 export const BearId = z
   .string()
+  .max(MAX_BEAR_ID_LENGTH, `must be at most ${MAX_BEAR_ID_LENGTH} characters`)
   .regex(/^[a-z]+(?:-[a-z]+)*$/v, 'must be lowercase words joined by hyphens');
 
 export const Bear = z.object({

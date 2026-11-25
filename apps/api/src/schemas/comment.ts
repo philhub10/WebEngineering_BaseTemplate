@@ -9,7 +9,7 @@ const MAX_PAGE_SIZE = 20;
 const MAX_CURSOR_LENGTH = 500;
 
 // The messages end up in the problem's `detail`, e.g. "text must not be empty".
-export const NewComment = z.object({
+export const NewComment = z.strictObject({
   author: z
     .string('must be a string')
     .trim()
