@@ -18,11 +18,14 @@
     "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts",
     "db:seed:comments": "tsx --env-file-if-exists=../../.env src/db/seed-comments.ts",
-    "report:storm": "tsx --env-file-if-exists=../../.env scripts/report-storm.ts"
+    "report:storm": "tsx --env-file-if-exists=../../.env scripts/report-storm.ts",
+    "brute:force": "tsx scripts/brute-force.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
     "@fastify/cors": "^11.3.1",
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.3.0",
     "@fastify/session": "^11.2.1",
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",

@@ -908,6 +908,37 @@ Add rate limiting to login and register (429 with `Retry-After`), security heade
 
 **Theory question:** Map your measures to the OWASP Top 10: which items do they address? Explain token bucket versus fixed window rate limiting, and what "defence in depth" means for this API.
 
+**Rate limiting** (`@fastify/rate-limit`, `src/plugins/rate-limit.ts`). Only routes with `config.rateLimit` are limited (`global: false`):
+
+Brute-force demo (API on `localhost:3000`, 15 wrong passwords for one account):
+```bash
+npm run brute:force
+npm run brute:force -- max@example.org
+```
+
+**Security headers** (`@fastify/helmet`, `src/plugins/security-headers.ts`) on every API response, errors included. The API only serves JSON, so its CSP allows nothing (`default-src 'none'`); `/api/docs` sets its own CSP so the Swagger UI can load its scripts.
+```bash
+curl -I localhost:3000/api/bears
+```
+
+**Strict CORS** (`@fastify/cors`, `src/plugins/cors.ts`): only the origins in `CORS_ORIGINS`, never `*`, with `credentials: true` for the session cookie.
+
+Preflight from the allowed origin
+```bash
+curl -i -X OPTIONS localhost:3000/api/comments/00000000-0000-4000-8000-000000000000 -H 'origin: http://localhost:4173' -H 'access-control-request-method: DELETE'
+```
+
+Preflight from a foreign origin: no `access-control-allow-origin`, so the browser blocks the request:
+```bash
+curl -i -X OPTIONS localhost:3000/api/comments/00000000-0000-4000-8000-000000000000 -H 'origin: https://evil.example' -H 'access-control-request-method: DELETE'
+```
+
+**Body limit** (`bodyLimit` in `src/app.ts`): 16 KB instead of Fastify's default of 1 MB. The largest valid body, a comment with 80 + 2000 characters, stays below ~12.5 KB even if every character is JSON-escaped. Anything larger is rejected with 413 before it is parsed or validated.
+```bash
+curl -i -X POST localhost:3000/api/auth/register -H 'content-type: application/json' --data-binary "{\"password\":\"$(head -c 20000 /dev/zero | tr '\0' x)\"}"
+```
+
+
 #### Task 5: Security review and one attack test
 
 Write a short security review of the bear API in your README: choose three OWASP Top 10 risks, explain how each applies to this application, what mitigates it and what residual risk remains. Then write one automated test (vitest with `fastify.inject()`) that reproduces an attack, for example an injection attempt through `?q=`, a stored XSS payload in a comment, an IDOR delete or a cross-site POST, and shows that the mitigation holds.

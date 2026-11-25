@@ -9,7 +9,7 @@ const corsConfig: FastifyPluginAsync = async (app) => {
     origin: app.config.CORS_ORIGINS,
     methods: ['GET', 'POST', 'DELETE'],
     allowedHeaders: ['content-type', 'x-request-id'],
-    exposedHeaders: ['location', 'x-request-id'],
+    exposedHeaders: ['location', 'x-request-id', 'retry-after'],
     credentials: true,
     maxAge: PREFLIGHT_MAX_AGE_SECONDS,
   });

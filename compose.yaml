@@ -24,6 +24,7 @@ services:
       USER_AGENT: BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)
       CORS_ORIGINS: http://localhost:4173
       ENABLE_DEBUG_ROUTES: "false"
+      TRUST_PROXY: "true"
       SEED_MODERATOR_PASSWORD: ${SEED_MODERATOR_PASSWORD:-}
     ports: ["3000:3000"]
     depends_on:

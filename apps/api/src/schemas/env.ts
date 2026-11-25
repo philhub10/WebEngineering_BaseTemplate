@@ -7,6 +7,12 @@ const DEFAULT_DB_POOL_MAX = 10;
 const DEFAULT_DB_CONNECTION_TIMEOUT_MS = 2_000;
 const MIN_SESSION_SECRET_LENGTH = 32;
 
+const CorsOrigin = z
+  .url({ protocol: /^https?$/v })
+  .refine((value) => URL.canParse(value) && new URL(value).origin === value, {
+    message: 'must be an origin like https://bears.example',
+  });
+
 export const Env = z
   .object({
     // Only "production" sets the Secure flag on the session cookie.
@@ -28,11 +34,13 @@ export const Env = z
         'BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)'
       ),
     ENABLE_DEBUG_ROUTES: z.stringbool().default(true),
+    TRUST_PROXY: z.stringbool().default(false),
+    // Exact origins as the browser sends them: no "*", path or trailing slash.
     CORS_ORIGINS: z
       .string()
       .default('http://localhost:4173')
       .transform((value) => value.split(',').map((origin) => origin.trim()))
-      .pipe(z.array(z.url())),
+      .pipe(z.array(CorsOrigin)),
     DATABASE_URL: z.url({ protocol: /^postgres(?:ql)?$/v }),
     DB_POOL_MAX: z.coerce
       .number()

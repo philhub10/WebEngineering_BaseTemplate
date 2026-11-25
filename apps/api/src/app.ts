@@ -11,8 +11,10 @@ import { authPlugin } from './plugins/auth.js';
 import { configPlugin } from './plugins/config.js';
 import { corsPlugin } from './plugins/cors.js';
 import { dbPlugin } from './plugins/db.js';
+import { rateLimitPlugin } from './plugins/rate-limit.js';
 import { repositoriesPlugin } from './plugins/repositories.js';
 import { sessionPlugin } from './plugins/session.js';
+import { securityHeadersPlugin } from './plugins/security-headers.js';
 import { swaggerPlugin } from './plugins/swagger.js';
 import { PROBLEM_CONTENT_TYPE, problem, toProblem } from './problem.js';
 import type { Repos } from './repositories/index.js';
@@ -25,6 +27,7 @@ import { healthRoutes } from './routes/health.js';
 const REQUEST_ID_HEADER = 'x-request-id';
 const NOT_FOUND = 404;
 const INTERNAL_SERVER_ERROR = 500;
+const BODY_LIMIT_BYTES = 16_384;
 
 // Reuses an incoming x-request-id if it is a UUID, otherwise creates one.
 function genReqId(request: IncomingMessage): string {
@@ -40,7 +43,12 @@ export function buildApp(
   options: FastifyServerOptions = {},
   dependencies: AppDependencies = {}
 ): FastifyInstance {
-  const app = Fastify({ ...options, requestIdHeader: false, genReqId });
+  const app = Fastify({
+    bodyLimit: BODY_LIMIT_BYTES, // larger bodies: 413 before any parsing
+    ...options,
+    requestIdHeader: false,
+    genReqId,
+  });
 
   // Route schemas are written with zod instead of JSON Schema.
   app.setValidatorCompiler(validatorCompiler);
@@ -74,6 +82,8 @@ export function buildApp(
   void app.register(configPlugin);
   void app.register(dbPlugin);
   void app.register(repositoriesPlugin, { repos: dependencies.repos });
+  void app.register(securityHeadersPlugin);
+  void app.register(rateLimitPlugin);
   void app.register(sessionPlugin);
   void app.register(authPlugin);
   void app.register(corsPlugin);

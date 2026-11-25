@@ -342,3 +342,67 @@ describe('authorisation for comments', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('rate limits', () => {
+  async function attemptLogin(
+    app: FastifyInstance,
+    email: string
+  ): Promise<LightMyRequestResponse> {
+    return await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email, password: 'wrong password here' },
+    });
+  }
+
+  it('answers 429 with Retry-After after 10 login attempts', async () => {
+    const app = await setup();
+    const statuses: number[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- one after another, like a brute-force script
+      statuses.push((await attemptLogin(app, 'lena@example.org')).statusCode);
+    }
+    const blocked = await attemptLogin(app, 'lena@example.org');
+
+    expect(statuses).toEqual(Array.from({ length: 10 }, () => 401));
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers['retry-after']).toEqual(expect.any(String));
+    expect(blocked.headers['x-ratelimit-limit']).toBe('10');
+    expect(blocked.headers['content-type']).toContain(
+      'application/problem+json'
+    );
+  });
+
+  it('limits per IP and e-mail: another account is not locked out', async () => {
+    const app = await setup();
+    for (let i = 0; i < 11; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- one after another on purpose
+      await attemptLogin(app, 'lena@example.org');
+    }
+    const other = await attemptLogin(app, 'max@example.org');
+
+    expect(other.statusCode).toBe(401);
+  });
+
+  it('answers 429 after 10 registrations from one IP', async () => {
+    const app = await setup();
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i += 1) {
+      // eslint-disable-next-line no-await-in-loop -- one after another on purpose
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/register',
+        payload: {
+          email: `user${i}@example.org`,
+          password: 'correct horse battery staple',
+        },
+      });
+      statuses.push(res.statusCode);
+    }
+
+    expect(statuses.slice(0, 10)).toEqual(
+      Array.from({ length: 10 }, () => 201)
+    );
+    expect(statuses[10]).toBe(429);
+  });
+});

@@ -42,6 +42,13 @@ export class ConflictError extends AppError {
   readonly title = 'Conflict';
 }
 
+export class TooManyRequestsError extends AppError {
+  override name = 'TooManyRequestsError';
+  readonly status = 429;
+  readonly type = `${PROBLEM_BASE}/rate-limited`;
+  readonly title = 'Too many requests';
+}
+
 export class UpstreamError extends AppError {
   override name = 'UpstreamError';
   readonly status = 502;

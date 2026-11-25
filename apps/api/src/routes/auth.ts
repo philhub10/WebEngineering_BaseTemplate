@@ -2,6 +2,7 @@ import type { FastifyPluginCallback } from 'fastify';
 import type { ZodTypeProvider } from '@fastify/type-provider-zod';
 import { z } from 'zod';
 import { authenticatedUser, requireAuth } from '../plugins/auth.js';
+import { loginRateLimit, registerRateLimit } from '../plugins/rate-limit.js';
 import { SESSION_COOKIE } from '../plugins/session.js';
 import { LoginBody, PublicUser, RegisterBody } from '../schemas/auth.js';
 import { problemResponses } from '../schemas/problem.js';
@@ -17,6 +18,7 @@ export const authRoutes: FastifyPluginCallback = (app, _options, done) => {
   api.post(
     '/api/auth/register',
     {
+      config: { rateLimit: registerRateLimit },
       schema: {
         body: RegisterBody,
         response: { [CREATED]: PublicUser, ...problemResponses },
@@ -31,6 +33,7 @@ export const authRoutes: FastifyPluginCallback = (app, _options, done) => {
   api.post(
     '/api/auth/login',
     {
+      config: { rateLimit: loginRateLimit },
       schema: {
         body: LoginBody,
         response: { [OK]: PublicUser, ...problemResponses },

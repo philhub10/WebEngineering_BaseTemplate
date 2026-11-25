@@ -19,7 +19,12 @@ const swaggerConfig: FastifyPluginAsync = async (app) => {
     // Turns schemas with a `.meta({ id })` (e.g. Problem) into components.
     transformObject: jsonSchemaTransformObject,
   });
-  await app.register(swaggerUi, { routePrefix: '/api/docs' });
+  await app.register(swaggerUi, {
+    routePrefix: '/api/docs',
+    // Its own CSP for the docs pages: helmet's 'none' would block the UI,
+    // this one allows the UI's scripts and styles from our own origin.
+    staticCSP: true,
+  });
 };
 
 export const swaggerPlugin = fp(swaggerConfig, {

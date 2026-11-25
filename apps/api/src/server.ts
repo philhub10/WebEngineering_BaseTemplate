@@ -1,8 +1,9 @@
 import { buildApp } from './app.js';
+import { loadEnv } from './schemas/env.js';
 
 const EXIT_FAILURE = 1;
 
-const app = buildApp({ logger: true });
+const app = buildApp({ logger: true, trustProxy: loadEnv().TRUST_PROXY });
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   app.log.info({ signal }, 'shutting down');
