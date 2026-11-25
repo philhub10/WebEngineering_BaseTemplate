@@ -3,7 +3,7 @@ services:
     image: docker.io/library/postgres:18
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-bears}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bears}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env, see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-bears}
     volumes:
       - pgdata:/var/lib/postgresql
@@ -19,7 +19,8 @@ services:
     restart: on-failure
     environment:
       PORT: "3000"
-      DATABASE_URL: postgres://${POSTGRES_USER:-bears}:${POSTGRES_PASSWORD:-bears}@db:5432/${POSTGRES_DB:-bears}
+      DATABASE_URL: postgres://${POSTGRES_USER:-bears}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-bears}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env, see .env.example}
       WIKIPEDIA_BASE_URL: https://en.wikipedia.org
       USER_AGENT: BearApp/0.1 (https://github.com/philhub10/WebEngineering_BaseTemplate; philhub10@gmail.com)
       CORS_ORIGINS: http://localhost:4173

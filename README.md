@@ -943,6 +943,8 @@ curl -i -X POST localhost:3000/api/auth/register -H 'content-type: application/j
 curl -i -b lena.txt -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'content-type: application/json' -d '{"author":"Lena","text":"Hi","authorId":"00000000-0000-4000-8000-000000000000"}'
 ```
 
+**Secrets only from the environment:** no password or secret is in git. `.env.example` is committed with placeholders, the real `.env` is gitignored.
+
 
 #### Task 5: Security review and one attack test
 
