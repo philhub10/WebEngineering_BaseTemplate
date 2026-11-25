@@ -950,6 +950,30 @@ curl -i -b lena.txt -X POST localhost:3000/api/bears/ursus-arctos/comments -H 'c
 gitleaks git --redact
 ```
 
+> **Answer:**
+>
+> **OWASP Top 10:**
+>
+> | Measure | Addresses |
+> |---|---|
+> | Rate limit on login and register | **A07** Authentication Failures (brute force, credential guessing), **A06** Insecure Design (no limit by design) |
+> | Security headers (helmet) | **A02** Security Misconfiguration (missing headers); `nosniff` and the strict CSP keep an API response from ever running as a page (**A05** Injection, XSS) |
+> | Strict CORS with an allow-list | **A01** Broken Access Control (CORS misconfiguration is part of A01), **A02** (no `*`, no `origin: true`) |
+> | Body limit | **A06** Insecure Design (a huge body as denial of service) |
+> | zod on every input, strict bodies | **A01** (mass assignment: `role` or `authorId` in a body), **A05** (smaller attack surface, but parameterised queries are what stops injection) |
+> | Secrets only from the environment, gitleaks | **A04** Cryptographic Failures (secrets in git), **A02** (default passwords) |
+>
+> **Fixed window vs. token bucket:**
+> * **Fixed window** (what `@fastify/rate-limit` does per key): a counter per key that resets at the end of each window, here 10 per minute. Simple, constant memory. Weakness at the boundary: 10 attempts in the last second of one minute and 10 in the first second of the next give 20 in two seconds.
+> * **Token bucket:** a bucket holds up to *b* tokens and is refilled at *r* tokens per second; each request takes one, an empty bucket means 429.
+>
+> **Defence in depth:** several independent layers, so that one mistake or one bypassed control is not yet a breach. Each layer catches what the others cannot.
+> * **Brute force:** argon2id makes every guess expensive, the rate limit caps the guesses, and the same 401 for every failure gives no hint which accounts exist.
+> * **Someone else's comment (IDOR):** the policy answers 403, and the `DELETE ... WHERE author_id = $2` still deletes nothing if the policy were forgotten.
+> * **CSRF:** `SameSite=Lax` keeps the cookie off cross-site POSTs, and JSON-only bodies plus the CORS allow-list stop a foreign page even if a browser sent the cookie.
+> * **Stored XSS:** zod limits the input, the API only ever returns it as JSON (`nosniff`, CSP `default-src 'none'`), and Angular encodes it as text when rendering.
+> * **Secrets:** `.gitignore` keeps `.env` out, the pre-commit hook catches a staged secret, and the CI scan catches what the hook missed
+
 
 #### Task 5: Security review and one attack test
 
